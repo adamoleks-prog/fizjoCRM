@@ -34,11 +34,28 @@ it('removes a locality that appears outside the address', function () {
         ->and($result->count(RedactionCategory::Locality))->toBe(1);
 });
 
-it('removes a locality through declension', function () {
-    $result = $this->anonymizer->anonymize('Mieszka w Oświęcimiu od dziesięciu lat.', $this->patient);
+/*
+ * The patient's own address contains Oświęcim, so layer 1 would remove it and the
+ * test would prove nothing about the register. Every place below is deliberately
+ * one the patient record does not mention.
+ */
+it('removes a locality through declension', function (string $sentence, string $gone) {
+    $result = $this->anonymizer->anonymize($sentence, $this->patient);
 
-    expect($result->text)->not->toContain('Oświęcim')
-        ->toContain('od dziesięciu lat');
+    expect($result->text)->not->toContain($gone)
+        ->and($result->count(RedactionCategory::Locality))->toBe(1);
+})->with([
+    'locative -ie' => ['Mieszka w Tarnowie od dziesięciu lat.', 'Tarnowie'],
+    'locative -iu' => ['Mieszka w Rybniku od dziesięciu lat.', 'Rybniku'],
+    'locative plural -ach' => ['Pracuje w Wadowicach jako księgowa.', 'Wadowicach'],
+    'genitive -a' => ['Pochodzi z okolic Rybnika.', 'Rybnika'],
+    'instrumental -em' => ['Zajmuje się nią lekarz z Krakowem w tle.', 'Krakowem'],
+]);
+
+it('keeps the sentence around a removed locality intact', function () {
+    $result = $this->anonymizer->anonymize('Mieszka w Tarnowie od dziesięciu lat.', $this->patient);
+
+    expect($result->text)->toContain('Mieszka w')->toContain('od dziesięciu lat');
 });
 
 it('removes a multi word locality', function () {

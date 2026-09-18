@@ -16,7 +16,7 @@ class WordIndex
     /** Longest first, so "iego" is tried before "ego" and "a". */
     private const ENDINGS = [
         'iego', 'iemu', 'ego', 'emu', 'iej', 'ami', 'ach', 'owi', 'iem',
-        'ie', 'ej', 'ym', 'im', 'om', 'ow', 'em', 'a', 'e', 'i', 'o', 'u', 'y',
+        'ie', 'iu', 'ej', 'ym', 'im', 'om', 'ow', 'em', 'a', 'e', 'i', 'o', 'u', 'y',
     ];
 
     /** @var array<string, true> */

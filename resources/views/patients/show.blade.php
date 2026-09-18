@@ -57,6 +57,28 @@
                 <form method="POST" action="{{ route('documents.store', $patient) }}" enctype="multipart/form-data"
                       data-document-scanner class="mb-4 space-y-2">
                     @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <x-input-label for="type" value="Rodzaj dokumentu" />
+                            <select id="type" name="type" required
+                                    class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm text-sm">
+                                @foreach (\App\Enums\DocumentType::cases() as $documentType)
+                                    <option value="{{ $documentType->value }}" @selected(old('type', 'referral') === $documentType->value)>
+                                        {{ $documentType->label() }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('type')" class="mt-1" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="title" value="Nazwa (opcjonalnie)" />
+                            <x-text-input id="title" name="title" class="block mt-1 w-full text-sm" :value="old('title')"
+                                          placeholder="np. Skierowanie od ortopedy" />
+                            <x-input-error :messages="$errors->get('title')" class="mt-1" />
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input type="file" name="file" accept="application/pdf,image/*" capture="environment" required
                                class="text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-gray-800 dark:file:bg-gray-200 file:text-white dark:file:text-gray-800 file:text-xs file:uppercase file:font-semibold" />
@@ -70,11 +92,26 @@
                 </form>
 
                 @forelse ($patient->documents as $document)
-                    <div class="flex items-center justify-between border-b dark:border-gray-700 py-2 text-sm last:border-0">
-                        <a href="{{ route('documents.show', $document) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
-                            {{ $document->original_filename }}
-                        </a>
-                        <span class="text-gray-500 dark:text-gray-400">
+                    <div class="flex items-start justify-between gap-3 border-b dark:border-gray-700 py-2 text-sm last:border-0">
+                        <div>
+                            <a href="{{ route('documents.show', $document) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                {{ $document->displayName() }}
+                            </a>
+                            <div class="mt-0.5 flex flex-wrap items-center gap-2">
+                                <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                    {{ $document->type->label() }}
+                                </span>
+                                @php $extraction = $document->text_extraction_status; @endphp
+                                <span @class([
+                                    'text-xs',
+                                    'text-emerald-600 dark:text-emerald-400' => $extraction->hasText(),
+                                    'text-gray-500 dark:text-gray-400' => ! $extraction->hasText(),
+                                ])>
+                                    {{ $extraction->label() }}
+                                </span>
+                            </div>
+                        </div>
+                        <span class="text-gray-500 dark:text-gray-400 shrink-0">
                             {{ $document->created_at->format('d.m.Y') }} · {{ round($document->size_bytes / 1024) }} KB
                         </span>
                     </div>

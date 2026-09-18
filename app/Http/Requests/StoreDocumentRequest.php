@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\DocumentType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class StoreDocumentRequest extends FormRequest
 {
@@ -30,6 +32,9 @@ class StoreDocumentRequest extends FormRequest
                 'integer',
                 Rule::exists('appointments', 'id')->where('patient_id', $this->route('patient')->id),
             ],
+            // Absent means "Inne", which is deliberately treated as non-clinical.
+            'type' => ['nullable', new Enum(DocumentType::class)],
+            'title' => ['nullable', 'string', 'max:160'],
         ];
     }
 

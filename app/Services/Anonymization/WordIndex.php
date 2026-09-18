@@ -47,11 +47,52 @@ class WordIndex
         }
     }
 
+    /** @var array<string, self> */
+    private static array $loaded = [];
+
+    /**
+     * The lists never change while the process runs, and building the surname index
+     * costs tens of megabytes — so it is built once per process and shared, not once
+     * per application instance. The modification time is part of the key so an
+     * updated file is picked up without restarting the worker.
+     */
     public static function fromFile(string $path): self
     {
-        $lines = is_file($path) ? file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
+        $key = $path.'@'.(is_file($path) ? filemtime($path) : 0);
 
-        return new self(array_filter($lines ?: [], fn (string $l) => ! str_starts_with($l, '#')));
+        return self::$loaded[$key] ??= self::build($path);
+    }
+
+    private static function build(string $path): self
+    {
+        return new self(self::lines($path));
+    }
+
+    /**
+     * Streamed line by line — file() would hold the whole list in memory alongside
+     * the index being built from it.
+     *
+     * @return \Generator<int, string>
+     */
+    private static function lines(string $path): \Generator
+    {
+        if (! is_file($path)) {
+            return;
+        }
+
+        $handle = fopen($path, 'r');
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                $line = rtrim($line, "\r\n");
+
+                if ($line !== '' && $line[0] !== '#') {
+                    yield $line;
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
     }
 
     public static function fold(string $value): string

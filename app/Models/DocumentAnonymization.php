@@ -11,9 +11,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * The version of a document that may leave the server, kept separately from the
  * original — the original is medical record and must never be overwritten.
+ *
+ * operator_id, document_id and the approval columns are deliberately not fillable:
+ * the service assigns them explicitly, so they can never arrive from request input.
  */
 #[ScopedBy([OperatorScope::class])]
-#[Fillable(['anonymized_text', 'redaction_report', 'suspicion_count', 'confidence', 'status', 'ruleset_version'])]
+#[Fillable([
+    'anonymized_text',
+    'generated_text',
+    'source_hash',
+    'redaction_report',
+    'suspicion_count',
+    'confidence',
+    'status',
+    'manual_edits',
+    'ruleset_version',
+])]
 class DocumentAnonymization extends Model
 {
     protected function casts(): array

@@ -110,6 +110,31 @@
                                     {{ $extraction->label() }}
                                 </span>
                             </div>
+
+                            @if ($document->type->isClinical() && $extraction->hasText())
+                                @php $anonymization = $document->anonymization; @endphp
+                                <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                                    @if ($anonymization)
+                                        <a href="{{ route('anonymizations.show', $document) }}"
+                                           class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            Przejrzyj przed analizą
+                                        </a>
+                                        <span @class([
+                                            'text-emerald-600 dark:text-emerald-400' => $anonymization->isApproved(),
+                                            'text-amber-600 dark:text-amber-400' => ! $anonymization->isApproved(),
+                                        ])>
+                                            {{ $anonymization->isApproved() ? 'zatwierdzone do analizy' : 'czeka na przegląd' }}
+                                        </span>
+                                    @else
+                                        <form method="POST" action="{{ route('anonymizations.store', $document) }}">
+                                            @csrf
+                                            <button class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                                Przygotuj do analizy
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                         <span class="text-gray-500 dark:text-gray-400 shrink-0">
                             {{ $document->created_at->format('d.m.Y') }} · {{ round($document->size_bytes / 1024) }} KB

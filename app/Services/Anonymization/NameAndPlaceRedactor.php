@@ -34,7 +34,24 @@ class NameAndPlaceRedactor
     /** @var array<int, string> */
     private array $suspicions = [];
 
+    /** @var array<int, string> */
+    private array $removed = [];
+
     public function __construct(private readonly NameDictionaries $dictionaries) {}
+
+    /**
+     * Fragments of an already processed text that this layer would still remove
+     * or is unsure about. Run on the outgoing text, it is what a reviewer needs to
+     * look at: anything listed here escaped the first pass.
+     *
+     * @return array<int, string>
+     */
+    public function findings(string $text): array
+    {
+        $this->redact($text, function (RedactionCategory $category): void {});
+
+        return array_values(array_unique([...$this->removed, ...$this->suspicions]));
+    }
 
     /**
      * @param  callable(RedactionCategory): void  $tally
@@ -43,6 +60,7 @@ class NameAndPlaceRedactor
     public function redact(string $text, callable $tally): array
     {
         $this->suspicions = [];
+        $this->removed = [];
 
         if (! preg_match_all(
             '/(?<![\p{L}\d\[])\p{Lu}\p{Ll}{2,}(?:[ -]\p{Lu}\p{Ll}{2,}){0,3}(?![\p{L}])/u',
@@ -66,6 +84,7 @@ class NameAndPlaceRedactor
         usort($edits, fn (array $a, array $b) => $b[0] <=> $a[0]);
 
         foreach ($edits as [$start, $length, $token]) {
+            $this->removed[] = substr($text, $start, $length);
             $text = substr_replace($text, $token, $start, $length);
         }
 

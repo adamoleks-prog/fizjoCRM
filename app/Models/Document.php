@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'patient_id',
@@ -32,6 +33,14 @@ class Document extends Model
             'text_extraction_status' => TextExtractionStatus::class,
             'text_extracted_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return HasOne<DocumentAnonymization, $this>
+     */
+    public function anonymization(): HasOne
+    {
+        return $this->hasOne(DocumentAnonymization::class);
     }
 
     /** The name the physiotherapist gave it, falling back to the uploaded filename. */

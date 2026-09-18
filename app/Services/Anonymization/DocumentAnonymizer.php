@@ -41,6 +41,34 @@ class DocumentAnonymizer
     }
 
     /**
+     * Re-checks text that is about to leave the server — including text a person
+     * has just edited by hand, who may have typed an identifier back in.
+     *
+     * "critical" counts what the fixed layers still find (never the values), and
+     * "findings" lists the fragments layer 3 would still remove or is unsure about.
+     *
+     * @return array{critical: array<string, int>, findings: array<int, string>}
+     */
+    public function residue(string $text, Patient $patient): array
+    {
+        $this->report = [];
+
+        $this->redactPatterns($this->redactKnownValues($text, $patient));
+
+        $critical = [];
+
+        foreach (RedactionCategory::cases() as $category) {
+            $count = $this->report[$category->value] ?? 0;
+
+            if ($category->isCritical() && $count > 0) {
+                $critical[$category->value] = $count;
+            }
+        }
+
+        return ['critical' => $critical, 'findings' => $this->namesAndPlaces->findings($text)];
+    }
+
+    /**
      * Layer 1 — we know exactly who this patient is, so we look for their actual
      * values rather than guessing where a name might be.
      */
@@ -76,29 +104,35 @@ class DocumentAnonymizer
         $text = $this->replacePesel($text);
 
         $text = $this->replace($text, '/[\w.+-]+@[\w-]+\.[\w.]{2,}/u', RedactionCategory::Email);
-        $text = $this->replace($text, '/\b\d{2}-\d{3}\b/u', RedactionCategory::Address);
+        // A postal code is followed by its town — which layer 1 may already have
+        // turned into a token. Without that check the pattern also eats measurements
+        // such as a 10-120 degree range of motion.
+        $text = $this->replace($text, '/\b\d{2}-\d{3}\b(?=[ \t]+(?:\p{Lu}\p{L}|\[))/u', RedactionCategory::Address);
 
         // Polish phone numbers, with or without the country prefix and separators.
         $text = $this->replace(
             $text,
-            '/(?<![\d-])(?:\+48[\s-]?)?\d{3}[\s-]?\d{3}[\s-]?\d{3}(?![\d-])/u',
+            '/(?<![\d-])(?:\+48[ \t-]?)?\d{3}[ \t-]?\d{3}[ \t-]?\d{3}(?![\d-])/u',
             RedactionCategory::Phone,
         );
 
-        $text = $this->replace($text, '/\b[A-Z]{3}\s?\d{6}\b/u', RedactionCategory::IdDocument);
+        $text = $this->replace($text, '/\b[A-Z]{3}[ \t]?\d{6}\b/u', RedactionCategory::IdDocument);
+
+        // Every pattern below uses [ \t] rather than \s on purpose: \s also matches a
+        // newline, and a match that crosses one deletes the line break with it.
 
         // Facility names carry the town as often as the address does.
         $text = $this->replace(
             $text,
-            '/\b(?:NZOZ|SPZOZ|ZOZ|Przychodnia|Centrum\s+Medyczne|Centrum\s+Rehabilitacji|Gabinet|Klinika|Szpital)'
-            .'(?:\s+[\p{Lu}][\p{L}-]+){0,3}/u',
+            '/\b(?:NZOZ|SPZOZ|ZOZ|Przychodnia|Centrum[ \t]+Medyczne|Centrum[ \t]+Rehabilitacji|Gabinet|Klinika|Szpital)'
+            .'(?:[ \t]+[\p{Lu}][\p{L}-]+){0,3}/u',
             RedactionCategory::Facility,
         );
 
         // "dr n. med. Jan Zieliński", "lek. med. Anna Nowak"
         $text = $this->replace(
             $text,
-            '/\b(?:dr|lek\.?|lekarz)[\s.]*(?:n\.?\s*med\.?)?\s*[\p{Lu}][\p{L}-]+\s+[\p{Lu}][\p{L}-]+/u',
+            '/\b(?:dr|lek\.?|lekarz)[ \t.]*(?:n\.?[ \t]*med\.?)?[ \t]*[\p{Lu}][\p{L}-]+[ \t]+[\p{Lu}][\p{L}-]+/u',
             RedactionCategory::Doctor,
         );
 
@@ -241,13 +275,16 @@ class DocumentAnonymizer
         }
 
         $confusable = ['0' => '[0oO]', '1' => '[1lI]', '5' => '[5sS]', '8' => '[8bB]'];
-        $pattern = '';
 
-        foreach (str_split($digits) as $digit) {
-            $pattern .= ($confusable[$digit] ?? $digit).'[\s-]?';
-        }
+        // The separator sits between digits only, and never matches a newline:
+        // trailing or line-crossing whitespace here would swallow the line break
+        // after the number and fuse two lines of the document into one.
+        $pattern = implode('[ \t-]?', array_map(
+            fn (string $digit) => $confusable[$digit] ?? $digit,
+            str_split($digits),
+        ));
 
-        return '/(?<![\d])(?:\+?48[\s-]?)?'.$pattern.'/u';
+        return '/(?<![\d])(?:\+?48[ \t-]?)?'.$pattern.'(?![\d])/u';
     }
 
     /**

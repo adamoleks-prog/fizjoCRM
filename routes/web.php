@@ -3,6 +3,7 @@
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\GoogleCalendarController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentAnonymizationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Icd10Controller;
 use App\Http\Controllers\MeasurementTemplateController;
@@ -41,6 +42,12 @@ Route::middleware('auth')->group(function () {
 
     Route::post('patients/{patient}/documents', [DocumentController::class, 'store'])->name('documents.store');
     Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+
+    Route::post('documents/{document}/anonymization', [DocumentAnonymizationController::class, 'store'])->name('anonymizations.store');
+    Route::get('documents/{document}/anonymization', [DocumentAnonymizationController::class, 'show'])->name('anonymizations.show');
+    Route::put('documents/{document}/anonymization', [DocumentAnonymizationController::class, 'update'])->name('anonymizations.update');
+    Route::post('documents/{document}/anonymization/approve', [DocumentAnonymizationController::class, 'approve'])->name('anonymizations.approve');
+    Route::delete('documents/{document}/anonymization/approval', [DocumentAnonymizationController::class, 'revoke'])->name('anonymizations.revoke');
     Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 
     Route::get('reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');

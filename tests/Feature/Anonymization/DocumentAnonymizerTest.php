@@ -142,14 +142,26 @@ it('reports counts per category and never the removed values', function () {
         ->and($result->totalRedactions())->toBeGreaterThan(2);
 });
 
-it('refuses to call the result safe when an unclaimed name remains', function () {
-    // A third party the patient record knows nothing about.
+it('removes a third party the patient record knows nothing about', function () {
     $text = 'Opiekuje się nią córka Marta Wiśniewska, która przywozi ją na zabiegi.';
 
     $result = $this->anonymizer->anonymize($text, $this->patient);
 
+    expect($result->text)
+        ->not->toContain('Marta')
+        ->not->toContain('Wiśniewska')
+        ->toContain('przywozi ją na zabiegi')
+        ->and($result->count(RedactionCategory::OtherPerson))->toBe(1);
+});
+
+it('refuses to call the result safe when a lone surname is left unresolved', function () {
+    // A bare surname is too weak a signal to delete, but too strong to ignore.
+    $text = 'Zdaniem rodziny dolegliwości zgłaszał także Szczepaniak podczas wizyty.';
+
+    $result = $this->anonymizer->anonymize($text, $this->patient);
+
     expect($result->isHighConfidence())->toBeFalse()
-        ->and($result->suspicions)->toContain('Marta Wiśniewska');
+        ->and($result->suspicions)->toContain('Szczepaniak');
 });
 
 it('is confident when nothing name-shaped is left', function () {

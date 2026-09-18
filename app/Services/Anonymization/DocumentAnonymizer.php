@@ -23,16 +23,21 @@ class DocumentAnonymizer
     /** @var array<string, int> */
     private array $report = [];
 
+    public function __construct(private readonly NameAndPlaceRedactor $namesAndPlaces) {}
+
     public function anonymize(string $text, Patient $patient): AnonymizationResult
     {
         $this->report = [];
 
         $text = $this->redactKnownValues($text, $patient);
         $text = $this->redactPatterns($text);
+
+        [$text, $suspicions] = $this->namesAndPlaces->redact($text, fn (RedactionCategory $c) => $this->tally($c));
+
         $text = $this->shiftDates($text, $this->offsetFor($patient));
         $text = $this->collapseRepeatedTokens($text);
 
-        return new AnonymizationResult($text, $this->report, $this->findSuspicions($text));
+        return new AnonymizationResult($text, $this->report, $suspicions);
     }
 
     /**
@@ -210,26 +215,6 @@ class DocumentAnonymizer
         }
 
         return Carbon::create($year, $month, $day);
-    }
-
-    /**
-     * Layer 3 boundary — anything still shaped like "Firstname Lastname" that no
-     * layer claimed. These do not get removed automatically; they make the result
-     * low-confidence so a person has to look at it.
-     *
-     * @return array<int, string>
-     */
-    private function findSuspicions(string $text): array
-    {
-        preg_match_all(
-            '/(?<![\p{L}])\p{Lu}\p{Ll}{2,}\s+\p{Lu}\p{Ll}{2,}(?![\p{L}])/u',
-            $text,
-            $matches,
-        );
-
-        $ignored = ['Rozpoznanie Pacjent', 'Zalecenia Wywiad'];
-
-        return array_values(array_unique(array_diff($matches[0] ?? [], $ignored)));
     }
 
     /**

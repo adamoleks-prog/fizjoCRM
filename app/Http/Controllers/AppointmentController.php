@@ -10,6 +10,7 @@ use App\Models\MeasurementTemplate;
 use App\Models\Patient;
 use App\Services\CollisionChecker;
 use App\Services\MeasurementSync;
+use App\Services\Messaging\ReminderSender;
 use App\Services\PainPointSync;
 use App\Services\PatientComorbiditySync;
 use App\Services\SlotService;
@@ -134,15 +135,18 @@ class AppointmentController extends Controller
             ->with('status', 'Wizyta została umówiona.');
     }
 
-    public function show(Appointment $appointment): View
+    public function show(Appointment $appointment, ReminderSender $reminders): View
     {
         $this->authorize('view', $appointment);
 
         $appointment->load([
-            'patient.comorbidities', 'documents', 'therapyCycle.milestones', 'measurements.template', 'painPoints',
+            'patient.comorbidities', 'documents', 'therapyCycle.milestones', 'measurements.template', 'painPoints', 'reminders',
         ]);
 
-        return view('appointments.show', compact('appointment'));
+        return view('appointments.show', [
+            'appointment' => $appointment,
+            'reminderAvailable' => $reminders->isAvailableFor($appointment->patient),
+        ]);
     }
 
     public function edit(Appointment $appointment): View

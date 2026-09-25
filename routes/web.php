@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\MessagingSettingsController;
 use App\Http\Controllers\AiClinicalCaseController;
 use App\Http\Controllers\AiRecommendationController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\AppointmentReminderController;
 use App\Http\Controllers\Auth\GoogleCalendarController;
+use App\Http\Controllers\ConsentController;
+use App\Http\Controllers\ConsentTemplateController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentAnonymizationController;
 use App\Http\Controllers\DocumentController;
@@ -13,6 +17,7 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TherapyCycleController;
+use App\Http\Controllers\VisitCardController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -66,6 +71,24 @@ Route::middleware('auth')->group(function () {
     Route::post('therapy-cycles/{therapyCycle}/recommendations', [AiRecommendationController::class, 'store'])->name('recommendations.store');
     Route::get('recommendations/{recommendation}', [AiRecommendationController::class, 'show'])->name('recommendations.show');
     Route::patch('recommendations/{recommendation}/decision', [AiRecommendationController::class, 'decide'])->name('recommendations.decide');
+
+    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('messaging', [MessagingSettingsController::class, 'edit'])->name('messaging.edit');
+        Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('messaging.update');
+        Route::post('messaging/test-email', [MessagingSettingsController::class, 'testEmail'])->name('messaging.test-email');
+        Route::post('messaging/test-sms', [MessagingSettingsController::class, 'testSms'])->name('messaging.test-sms');
+    });
+
+    Route::get('patients/{patient}/consents/create', [ConsentController::class, 'create'])->name('consents.create');
+    Route::post('patients/{patient}/consents', [ConsentController::class, 'store'])->name('consents.store');
+    Route::get('consent-templates', [ConsentTemplateController::class, 'index'])->name('consent-templates.index');
+    Route::post('consent-templates', [ConsentTemplateController::class, 'store'])->name('consent-templates.store');
+    Route::put('consent-templates/{consentTemplate}', [ConsentTemplateController::class, 'update'])->name('consent-templates.update');
+    Route::delete('consent-templates/{consentTemplate}', [ConsentTemplateController::class, 'destroy'])->name('consent-templates.destroy');
+
+    Route::get('appointments/{appointment}/card', [VisitCardController::class, 'show'])->name('visit-cards.show');
+    Route::post('appointments/{appointment}/card/send', [VisitCardController::class, 'send'])->name('visit-cards.send');
+    Route::post('appointments/{appointment}/reminder', [AppointmentReminderController::class, 'store'])->name('appointments.reminder');
 
     Route::get('reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
 

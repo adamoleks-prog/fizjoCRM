@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
 #[ScopedBy([OperatorScope::class])]
-#[Fillable(['first_name', 'last_name', 'phone', 'email', 'date_of_birth', 'address', 'notes'])]
+#[Fillable(['first_name', 'last_name', 'phone', 'email', 'reminders_enabled', 'date_of_birth', 'address', 'notes'])]
 class Patient extends Model
 {
     /** @use HasFactory<PatientFactory> */
@@ -24,6 +24,7 @@ class Patient extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'reminders_enabled' => 'boolean',
         ];
     }
 

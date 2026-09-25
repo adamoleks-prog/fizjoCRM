@@ -57,6 +57,16 @@
                             Kalendarz Google
                         </x-dropdown-link>
 
+                        <x-dropdown-link :href="route('consent-templates.index')">
+                            Wzory zgód
+                        </x-dropdown-link>
+
+                        @if (Auth::user()->isAdmin())
+                            <x-dropdown-link :href="route('admin.messaging.edit')">
+                                Ustawienia wysyłki
+                            </x-dropdown-link>
+                        @endif
+
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -121,6 +131,16 @@
                 <x-responsive-nav-link :href="route('google-calendar.edit')">
                     Kalendarz Google
                 </x-responsive-nav-link>
+
+                <x-responsive-nav-link :href="route('consent-templates.index')">
+                    Wzory zgód
+                </x-responsive-nav-link>
+
+                @if (Auth::user()->isAdmin())
+                    <x-responsive-nav-link :href="route('admin.messaging.edit')">
+                        Ustawienia wysyłki
+                    </x-responsive-nav-link>
+                @endif
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">

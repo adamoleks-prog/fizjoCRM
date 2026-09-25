@@ -104,6 +104,14 @@ class Appointment extends Model
     }
 
     /**
+     * @return HasMany<AppointmentReminder, $this>
+     */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(AppointmentReminder::class)->latest('id');
+    }
+
+    /**
      * @return HasMany<Document, $this>
      */
     public function documents(): HasMany

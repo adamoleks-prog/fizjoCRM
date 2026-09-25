@@ -8,4 +8,7 @@ enum PatientAccessAction: string
     case Updated = 'updated';
     case DocumentDownloaded = 'document_downloaded';
     case SentToAi = 'sent_to_ai';
+    case VisitCardDownloaded = 'visit_card_downloaded';
+    case VisitCardSent = 'visit_card_sent';
+    case ConsentSigned = 'consent_signed';
 }

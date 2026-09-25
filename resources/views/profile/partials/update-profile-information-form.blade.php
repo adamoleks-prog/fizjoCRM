@@ -47,6 +47,29 @@
             @endif
         </div>
 
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Dane gabinetu</h3>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Widoczne dla pacjentów: w przypomnieniach o wizytach i na karcie wizyty.</p>
+
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="practice_name" value="Nazwa gabinetu" />
+                    <x-text-input id="practice_name" name="practice_name" type="text" class="mt-1 block w-full" :value="old('practice_name', $user->practice_name)" placeholder="np. FizjoRoom" />
+                    <x-input-error class="mt-2" :messages="$errors->get('practice_name')" />
+                </div>
+                <div>
+                    <x-input-label for="practice_phone" value="Telefon do odwołania wizyty" />
+                    <x-text-input id="practice_phone" name="practice_phone" type="text" class="mt-1 block w-full" :value="old('practice_phone', $user->practice_phone)" />
+                    <x-input-error class="mt-2" :messages="$errors->get('practice_phone')" />
+                </div>
+                <div class="md:col-span-2">
+                    <x-input-label for="practice_address" value="Adres gabinetu" />
+                    <x-text-input id="practice_address" name="practice_address" type="text" class="mt-1 block w-full" :value="old('practice_address', $user->practice_address)" />
+                    <x-input-error class="mt-2" :messages="$errors->get('practice_address')" />
+                </div>
+            </div>
+        </div>
+
         <x-form-textarea name="competency_profile" label="Profil kompetencji" :value="$user->competency_profile" :rows="4"
                          hint="Staż i ukończone kursy, np. „15 lat doświadczenia. Terapia Cyriax, masaż tkanek głębokich, suche igłowanie.” Asystent terapii proponuje metody specjalistyczne tylko z tej listy." />
 

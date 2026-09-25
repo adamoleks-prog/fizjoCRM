@@ -27,6 +27,9 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
             'competency_profile' => ['nullable', 'string', 'max:2000'],
+            'practice_name' => ['nullable', 'string', 'max:120'],
+            'practice_address' => ['nullable', 'string', 'max:200'],
+            'practice_phone' => ['nullable', 'string', 'max:32'],
         ];
     }
 }

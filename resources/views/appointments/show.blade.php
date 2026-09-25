@@ -27,6 +27,62 @@
                 </div>
             @endif
 
+            @if ($errors->has('visit_card'))
+                <div class="p-4 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-lg">
+                    {{ $errors->first('visit_card') }}
+                </div>
+            @endif
+
+            {{-- Visit card for the patient --}}
+            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg px-6 py-4 text-sm text-gray-900 dark:text-gray-100 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <span class="text-gray-500 dark:text-gray-400">Karta wizyty dla pacjenta:</span>
+                    zabiegi, zalecenia i termin następnej wizyty
+                </div>
+                <div class="flex flex-wrap items-center gap-4">
+                    <a href="{{ route('visit-cards.show', $appointment) }}" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">Otwórz / drukuj PDF</a>
+                    @if ($appointment->patient->email)
+                        <form method="POST" action="{{ route('visit-cards.send', $appointment) }}"
+                              onsubmit="return confirm(@js('Wysłać kartę wizyty na '.$appointment->patient->email.'?'))">
+                            @csrf
+                            <button class="text-indigo-600 dark:text-indigo-400 hover:underline">Wyślij e-mailem</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+
+            @if ($errors->has('reminder'))
+                <div class="p-4 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-lg">
+                    {{ $errors->first('reminder') }}
+                </div>
+            @endif
+
+            @if ($appointment->status === \App\Enums\AppointmentStatus::Scheduled && $appointment->starts_at->isFuture())
+                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg px-6 py-4 text-sm text-gray-900 dark:text-gray-100 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Przypomnienie:</span>
+                        @if (! $appointment->patient->reminders_enabled)
+                            pacjent nie chce przypomnień
+                        @elseif ($last = $appointment->reminders->first())
+                            {{ $last->status === 'sent' ? 'wysłane' : 'nieudane' }} ({{ $last->channelLabel() }}, {{ $last->created_at->format('d.m H:i') }})
+                            @if ($last->status === 'failed')
+                                <span class="text-red-600 dark:text-red-400">— {{ $last->error }}</span>
+                            @endif
+                        @elseif ($reminderAvailable)
+                            zostanie wysłane automatycznie przed wizytą
+                        @else
+                            nie zostanie wysłane (brak skonfigurowanego kanału lub kontaktu pacjenta)
+                        @endif
+                    </div>
+                    @if ($reminderAvailable && $appointment->patient->reminders_enabled)
+                        <form method="POST" action="{{ route('appointments.reminder', $appointment) }}">
+                            @csrf
+                            <button class="text-indigo-600 dark:text-indigo-400 hover:underline">Wyślij przypomnienie teraz</button>
+                        </form>
+                    @endif
+                </div>
+            @endif
+
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
                 <dl class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>

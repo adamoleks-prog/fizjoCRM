@@ -52,7 +52,13 @@
             </div>
 
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
-                <h3 class="font-semibold mb-4">Dokumenty</h3>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h3 class="font-semibold">Dokumenty</h3>
+                    <a href="{{ route('consents.create', $patient) }}"
+                       class="inline-flex items-center px-3 py-1.5 bg-indigo-600 rounded-md text-xs font-semibold text-white uppercase tracking-widest hover:bg-indigo-500">
+                        Podpisz zgodę na tablecie
+                    </a>
+                </div>
 
                 <form method="POST" action="{{ route('documents.store', $patient) }}" enctype="multipart/form-data"
                       data-document-scanner class="mb-4 space-y-2">

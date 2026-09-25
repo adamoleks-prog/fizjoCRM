@@ -43,6 +43,16 @@
         <x-input-error :messages="$errors->get('address')" class="mt-2" />
     </div>
 
+    <div class="md:col-span-2">
+        <input type="hidden" name="reminders_enabled" value="0">
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" name="reminders_enabled" value="1"
+                   class="rounded border-gray-300 dark:border-gray-700 text-indigo-600"
+                   @checked(old('reminders_enabled', $patient?->reminders_enabled ?? true))>
+            Wysyłaj przypomnienia o wizytach (SMS / e-mail)
+        </label>
+    </div>
+
     @isset($operators)
         @if ($operators->isNotEmpty())
             <div>

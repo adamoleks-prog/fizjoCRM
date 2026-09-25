@@ -11,5 +11,6 @@ class SuggestionResponse
         public readonly ?int $promptTokens,
         public readonly ?int $completionTokens,
         public readonly ?float $cost,
+        public readonly bool $truncated = false,
     ) {}
 }

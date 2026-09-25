@@ -38,8 +38,8 @@ return [
             'amazon-bedrock/eu-west-1,google-vertex/europe',
         ))))),
 
-        'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 4000),
-        'timeout' => (int) env('OPENROUTER_TIMEOUT', 90),
+        'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 16000),
+        'timeout' => (int) env('OPENROUTER_TIMEOUT', 300),
         'daily_limit_per_operator' => (int) env('OPENROUTER_DAILY_LIMIT', 20),
     ],
 

@@ -247,7 +247,12 @@ it('fails on a truncated answer', function () {
 
     $this->actingAs($this->operator)->post(route('recommendations.store', $this->cycle));
 
-    expect(AiRecommendation::sole()->status)->toBe('failed');
+    expect(AiRecommendation::sole())
+        ->status->toBe('failed')
+        ->failure_reason->toContain('ucięta')
+        ->prompt_tokens->toBe(1800);
+
+    expect((float) AiRecommendation::sole()->cost)->toBe(0.0126);
 });
 
 it('fails with a generic reason on an HTTP error, never echoing the body', function () {

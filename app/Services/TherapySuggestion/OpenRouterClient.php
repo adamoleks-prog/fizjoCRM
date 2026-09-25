@@ -55,10 +55,6 @@ class OpenRouterClient implements SuggestionProvider
             throw new SuggestionFailed('Odpowiedź OpenRouter nie zawiera treści.');
         }
 
-        if (($choice['finish_reason'] ?? null) === 'length') {
-            throw new SuggestionFailed('Odpowiedź została ucięta — przekroczono limit długości.');
-        }
-
         $usage = $response->json('usage') ?? [];
 
         return new SuggestionResponse(
@@ -68,6 +64,7 @@ class OpenRouterClient implements SuggestionProvider
             promptTokens: isset($usage['prompt_tokens']) ? (int) $usage['prompt_tokens'] : null,
             completionTokens: isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
             cost: isset($usage['cost']) ? (float) $usage['cost'] : null,
+            truncated: ($choice['finish_reason'] ?? null) === 'length',
         );
     }
 

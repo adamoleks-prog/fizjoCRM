@@ -74,6 +74,13 @@ class RequestTherapySuggestion implements ShouldQueue
 
         $this->recordUsage($recommendation, $response);
 
+        // Checked after recording usage: a cut-off answer is paid for all the same.
+        if ($response->truncated) {
+            $this->markFailed($recommendation, 'Odpowiedź została ucięta — przekroczono limit długości (OPENROUTER_MAX_TOKENS).');
+
+            return;
+        }
+
         try {
             $data = json_decode($response->content, true, 64, JSON_THROW_ON_ERROR);
         } catch (JsonException) {

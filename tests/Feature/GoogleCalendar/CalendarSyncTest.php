@@ -139,3 +139,38 @@ it('lets an operator disconnect their calendar', function () {
     expect($operator->fresh()->googleCalendarToken)->toBeNull()
         ->and($operator->fresh()->google_calendar_connected_at)->toBeNull();
 });
+
+it('sends only the upcoming visits the user runs when asked', function () {
+    $operator = User::factory()->operator()->create();
+    connectGoogle($operator);
+    $patient = Patient::factory()->forOperator($operator)->create();
+
+    Queue::fake();
+
+    $upcoming = Appointment::factory()->forOperator($operator)->create(['patient_id' => $patient->id, 'starts_at' => now()->addDays(2), 'ends_at' => now()->addDays(2)->addHour()]);
+    Appointment::factory()->forOperator($operator)->create(['patient_id' => $patient->id, 'starts_at' => now()->subDays(2), 'ends_at' => now()->subDays(2)->addHour()]);
+    Appointment::factory()->create(['starts_at' => now()->addDays(3), 'ends_at' => now()->addDays(3)->addHour()]);
+
+    Queue::fake();
+
+    $this->actingAs($operator)
+        ->post(route('google-calendar.sync'))
+        ->assertRedirect(route('google-calendar.edit'));
+
+    Queue::assertPushed(SyncAppointmentToGoogleCalendar::class, 1);
+    Queue::assertPushed(SyncAppointmentToGoogleCalendar::class, fn ($job) => $job->appointmentId === $upcoming->id);
+});
+
+it('lets an admin be the treating physiotherapist of a patient', function () {
+    $admin = User::factory()->admin()->create(['name' => 'Szef Gabinetu']);
+
+    $this->actingAs($admin)
+        ->get(route('patients.create'))
+        ->assertSee('Szef Gabinetu (administrator)');
+
+    $this->actingAs($admin)
+        ->post(route('patients.store'), ['first_name' => 'Test', 'last_name' => 'Testowy', 'operator_id' => $admin->id, 'reminders_enabled' => 1])
+        ->assertSessionHasNoErrors();
+
+    expect(Patient::where('last_name', 'Testowy')->sole()->operator_id)->toBe($admin->id);
+});

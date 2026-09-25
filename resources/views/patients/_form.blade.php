@@ -56,12 +56,12 @@
     @isset($operators)
         @if ($operators->isNotEmpty())
             <div>
-                <x-input-label for="operator_id" value="Operator prowadzący" />
+                <x-input-label for="operator_id" value="Fizjoterapeuta prowadzący" />
                 <select id="operator_id" name="operator_id" required
                         class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 rounded-md shadow-sm">
                     <option value="">— wybierz —</option>
                     @foreach ($operators as $operator)
-                        <option value="{{ $operator->id }}" @selected(old('operator_id') == $operator->id)>{{ $operator->name }}</option>
+                        <option value="{{ $operator->id }}" @selected(old('operator_id') == $operator->id)>{{ $operator->name }}{{ $operator->isAdmin() ? ' (administrator)' : '' }}</option>
                     @endforeach
                 </select>
                 <x-input-error :messages="$errors->get('operator_id')" class="mt-2" />

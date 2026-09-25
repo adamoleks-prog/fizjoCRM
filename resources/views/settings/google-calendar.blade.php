@@ -21,9 +21,18 @@
                     </p>
                 @elseif ($connected)
                     <p class="text-sm mb-4">
-                        Twój kalendarz Google jest połączony. Umówione wizyty są automatycznie dodawane
-                        jako wydarzenia w Twoim kalendarzu.
+                        Twój kalendarz Google jest połączony. Trafiają do niego wizyty, w których jesteś
+                        <strong>fizjoterapeutą prowadzącym</strong> — nie te, które tylko umówiłeś dla kogoś innego.
                     </p>
+                    <div class="mb-6 flex flex-wrap items-center gap-3 text-sm">
+                        <span>Nadchodzące wizyty, które prowadzisz: <strong>{{ $upcoming }}</strong></span>
+                        @if ($upcoming > 0)
+                            <form method="POST" action="{{ route('google-calendar.sync') }}">
+                                @csrf
+                                <button class="text-indigo-600 dark:text-indigo-400 hover:underline">Wyślij je teraz do kalendarza</button>
+                            </form>
+                        @endif
+                    </div>
                     <form method="POST" action="{{ route('google-calendar.destroy') }}">
                         @csrf
                         @method('DELETE')

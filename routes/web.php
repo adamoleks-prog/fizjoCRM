@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/google-calendar', [GoogleCalendarController::class, 'edit'])->name('google-calendar.edit');
     Route::get('settings/google-calendar/redirect', [GoogleCalendarController::class, 'redirect'])->name('google-calendar.redirect');
     Route::get('settings/google-calendar/callback', [GoogleCalendarController::class, 'callback'])->name('google-calendar.callback');
+    Route::post('settings/google-calendar/sync', [GoogleCalendarController::class, 'sync'])->name('google-calendar.sync');
     Route::delete('settings/google-calendar', [GoogleCalendarController::class, 'destroy'])->name('google-calendar.destroy');
 });
 

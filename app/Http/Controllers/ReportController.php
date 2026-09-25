@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AppointmentStatus;
-use App\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\User;
 use Carbon\Carbon;
@@ -35,7 +34,7 @@ class ReportController extends Controller
             'countsByStatus' => $appointments->countBy(fn (Appointment $a) => $a->status->value),
             'statuses' => AppointmentStatus::cases(),
             'operators' => $request->user()->isAdmin()
-                ? User::query()->where('role', UserRole::Operator)->orderBy('name')->get()
+                ? User::query()->orderBy('name')->get()
                 : collect(),
             'selectedOperatorId' => $operatorId,
         ]);

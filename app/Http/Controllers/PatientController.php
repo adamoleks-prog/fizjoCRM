@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PatientAccessAction;
-use App\Enums\UserRole;
 use App\Http\Requests\StorePatientRequest;
 use App\Http\Requests\UpdatePatientRequest;
 use App\Models\Patient;
@@ -41,7 +40,7 @@ class PatientController extends Controller
 
         return view('patients.create', [
             'operators' => $request->user()->isAdmin()
-                ? User::query()->where('role', UserRole::Operator)->orderBy('name')->get()
+                ? User::query()->orderBy('name')->get()
                 : collect(),
         ]);
     }

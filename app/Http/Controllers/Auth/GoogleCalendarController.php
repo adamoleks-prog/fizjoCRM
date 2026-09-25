@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\AppointmentStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncAppointmentToGoogleCalendar;
+use App\Models\Appointment;
+use App\Models\User;
 use App\Services\GoogleCalendar\GoogleCalendarService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +21,7 @@ class GoogleCalendarController extends Controller
         return view('settings.google-calendar', [
             'connected' => $request->user()->googleCalendarToken !== null,
             'configured' => filled(config('services.google.client_id')),
+            'upcoming' => $this->upcoming($request->user())->count(),
         ]);
     }
 
@@ -53,9 +58,27 @@ class GoogleCalendarController extends Controller
 
         $user->forceFill(['google_calendar_connected_at' => now()])->save();
 
+        // Visits booked before the calendar was connected would otherwise only
+        // appear after their next edit.
+        $queued = $this->queueUpcoming($user);
+
         return redirect()
             ->route('google-calendar.edit')
-            ->with('status', 'Kalendarz Google został połączony.');
+            ->with('status', 'Kalendarz Google został połączony.'.($queued ? " Wysyłam do niego nadchodzące wizyty ({$queued})." : ''));
+    }
+
+    /** Sends every upcoming visit again — after connecting, or when something is missing. */
+    public function sync(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->googleCalendarToken, 404);
+
+        $queued = $this->queueUpcoming($request->user());
+
+        return redirect()
+            ->route('google-calendar.edit')
+            ->with('status', $queued
+                ? "Wysyłam do kalendarza nadchodzące wizyty ({$queued}). Pojawią się w ciągu minuty–dwóch."
+                : 'Nie masz nadchodzących wizyt jako fizjoterapeuta prowadzący.');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -68,5 +91,28 @@ class GoogleCalendarController extends Controller
         return redirect()
             ->route('google-calendar.edit')
             ->with('status', 'Kalendarz Google został odłączony.');
+    }
+
+    /**
+     * Visits land in the calendar of the physiotherapist who runs them — not of
+     * whoever booked them.
+     */
+    private function upcoming(User $user)
+    {
+        return Appointment::withoutGlobalScopes()
+            ->where('operator_id', $user->id)
+            ->where('status', AppointmentStatus::Scheduled)
+            ->where('starts_at', '>=', now()->startOfDay());
+    }
+
+    private function queueUpcoming(User $user): int
+    {
+        $ids = $this->upcoming($user)->pluck('id');
+
+        foreach ($ids as $id) {
+            SyncAppointmentToGoogleCalendar::dispatch($id);
+        }
+
+        return $ids->count();
     }
 }

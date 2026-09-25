@@ -9,10 +9,15 @@ use Google\Client;
 use Google\Service\Calendar;
 use Google\Service\Calendar\Event;
 use Google\Service\Calendar\EventDateTime;
+use Google\Service\Exception as GoogleServiceException;
 
 class GoogleCalendarService implements CalendarSynchronizer
 {
-    public const SCOPES = [Calendar::CALENDAR_EVENTS];
+    /** The calendar-list scope only reads which calendars exist, so one can be picked. */
+    public const SCOPES = [
+        Calendar::CALENDAR_EVENTS,
+        'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+    ];
 
     public function client(): Client
     {
@@ -53,8 +58,40 @@ class GoogleCalendarService implements CalendarSynchronizer
             return;
         }
 
+        $this->deleteFrom($token, $token->google_calendar_id, $appointment->google_event_id);
+    }
+
+    public function deleteFrom(GoogleCalendarToken $token, string $calendarId, string $eventId): void
+    {
         $service = new Calendar($this->authorizedClient($token));
-        $service->events->delete($token->google_calendar_id, $appointment->google_event_id);
+        $service->events->delete($calendarId, $eventId);
+    }
+
+    /**
+     * Calendars the user may add events to, primary first. Null when the stored
+     * connection predates the calendar-list permission and must be renewed.
+     *
+     * @return array<int, array{id: string, name: string, primary: bool}>|null
+     */
+    public function writableCalendars(GoogleCalendarToken $token): ?array
+    {
+        try {
+            $items = (new Calendar($this->authorizedClient($token)))
+                ->calendarList->listCalendarList(['minAccessRole' => 'writer'])
+                ->getItems();
+        } catch (GoogleServiceException $e) {
+            if ($e->getCode() === 403) {
+                return null;
+            }
+
+            throw $e;
+        }
+
+        return collect($items)
+            ->map(fn ($c) => ['id' => $c->getId(), 'name' => $c->getSummaryOverride() ?: $c->getSummary(), 'primary' => (bool) $c->getPrimary()])
+            ->sortBy([fn ($a, $b) => $b['primary'] <=> $a['primary'], fn ($a, $b) => strcmp($a['name'], $b['name'])])
+            ->values()
+            ->all();
     }
 
     /**
@@ -90,8 +127,9 @@ class GoogleCalendarService implements CalendarSynchronizer
         $patient = $appointment->patient;
 
         return new Event([
+            // Name and time only. Treatment notes are health data and stay in the
+            // CRM — Google Calendar is not the place for them.
             'summary' => "Wizyta: {$patient->last_name} {$patient->first_name}",
-            'description' => $appointment->treatment_notes,
             'start' => new EventDateTime([
                 'dateTime' => $appointment->starts_at->toRfc3339String(),
                 'timeZone' => config('app.timezone'),

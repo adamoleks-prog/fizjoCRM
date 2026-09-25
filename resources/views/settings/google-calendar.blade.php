@@ -24,6 +24,36 @@
                         Twój kalendarz Google jest połączony. Trafiają do niego wizyty, w których jesteś
                         <strong>fizjoterapeutą prowadzącym</strong> — nie te, które tylko umówiłeś dla kogoś innego.
                     </p>
+                    <div class="mb-6">
+                        @if ($calendars === null)
+                            <div class="text-sm bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-md p-3">
+                                Aby wybrać, do którego kalendarza trafiają wizyty, połącz się ponownie — Google poprosi o zgodę na odczyt listy Twoich kalendarzy.
+                                <a href="{{ route('google-calendar.redirect') }}" class="ml-1 font-semibold underline">Połącz ponownie</a>
+                            </div>
+                        @else
+                            <form method="POST" action="{{ route('google-calendar.calendar') }}" class="flex flex-wrap items-end gap-3">
+                                @csrf
+                                @method('PUT')
+                                <div>
+                                    <x-input-label for="calendar_id" value="Dodawaj wizyty do kalendarza" />
+                                    <select id="calendar_id" name="calendar_id"
+                                            class="mt-1 block border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm">
+                                        @foreach ($calendars as $calendar)
+                                            <option value="{{ $calendar['id'] }}" @selected($calendar['id'] === $currentCalendar || ($currentCalendar === 'primary' && $calendar['primary']))>
+                                                {{ $calendar['name'] }}{{ $calendar['primary'] ? ' (główny)' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <x-primary-button>Zapisz</x-primary-button>
+                            </form>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                Nowy kalendarz (np. „Wizyty”) utworzysz w Google Calendar: Inne kalendarze → + → Utwórz nowy kalendarz. Po zmianie nadchodzące wizyty zostaną przeniesione.
+                            </p>
+                            <x-input-error :messages="$errors->get('calendar_id')" class="mt-2" />
+                        @endif
+                    </div>
+
                     <div class="mb-6 flex flex-wrap items-center gap-3 text-sm">
                         <span>Nadchodzące wizyty, które prowadzisz: <strong>{{ $upcoming }}</strong></span>
                         @if ($upcoming > 0)

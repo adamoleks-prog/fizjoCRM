@@ -6,6 +6,7 @@ use App\Models\GoogleCalendarToken;
 use App\Models\Patient;
 use App\Models\User;
 use App\Services\GoogleCalendar\CalendarSynchronizer;
+use App\Services\GoogleCalendar\GoogleCalendarService;
 use Illuminate\Support\Facades\Queue;
 
 class FakeCalendarSynchronizer implements CalendarSynchronizer
@@ -173,4 +174,51 @@ it('lets an admin be the treating physiotherapist of a patient', function () {
         ->assertSessionHasNoErrors();
 
     expect(Patient::where('last_name', 'Testowy')->sole()->operator_id)->toBe($admin->id);
+});
+
+it('asks to reconnect when the calendar list cannot be read', function () {
+    config(['services.google.client_id' => 'test-client']);
+    $operator = User::factory()->operator()->create();
+    connectGoogle($operator);
+
+    $this->mock(GoogleCalendarService::class)
+        ->shouldReceive('writableCalendars')->andReturn(null);
+
+    $this->actingAs($operator)
+        ->get(route('google-calendar.edit'))
+        ->assertOk()
+        ->assertSee('Połącz ponownie');
+});
+
+it('moves upcoming visits to the chosen calendar', function () {
+    $operator = User::factory()->operator()->create();
+    $token = connectGoogle($operator);
+    $patient = Patient::factory()->forOperator($operator)->create();
+
+    Queue::fake();
+
+    $visit = Appointment::factory()->forOperator($operator)->create(['patient_id' => $patient->id, 'starts_at' => now()->addDays(2), 'ends_at' => now()->addDays(2)->addHour()]);
+    $visit->forceFill(['google_event_id' => 'old-event'])->saveQuietly();
+
+    $service = $this->mock(GoogleCalendarService::class);
+    $service->shouldReceive('writableCalendars')->andReturn([
+        ['id' => 'me@example.com', 'name' => 'Ja', 'primary' => true],
+        ['id' => 'wizyty@group.calendar.google.com', 'name' => 'Wizyty', 'primary' => false],
+    ]);
+    $service->shouldReceive('deleteFrom')->once()->withArgs(fn ($t, $calendar, $event) => $calendar === 'primary' && $event === 'old-event');
+
+    Queue::fake();
+
+    $this->actingAs($operator)
+        ->put(route('google-calendar.calendar'), ['calendar_id' => 'wizyty@group.calendar.google.com'])
+        ->assertSessionHasNoErrors();
+
+    expect($token->fresh()->google_calendar_id)->toBe('wizyty@group.calendar.google.com')
+        ->and($visit->fresh()->google_event_id)->toBeNull();
+
+    Queue::assertPushed(SyncAppointmentToGoogleCalendar::class, fn ($job) => $job->appointmentId === $visit->id);
+
+    $this->actingAs($operator)
+        ->put(route('google-calendar.calendar'), ['calendar_id' => 'someone-else@example.com'])
+        ->assertSessionHasErrors('calendar_id');
 });

@@ -155,7 +155,7 @@
                             <span class="text-gray-500 dark:text-gray-400">{{ $appointment->status->label() }}</span>
                         </div>
                         @if ($cycle = $appointment->therapyCycle)
-                            <div class="text-gray-600 dark:text-gray-300">Cykl: {{ $cycle->name }}</div>
+                            <div class="text-gray-600 dark:text-gray-300">Cykl: <a href="{{ route('therapy-cycles.show', $cycle) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $cycle->name }}</a></div>
                         @endif
 
                         @if ($appointment->icd10_code)

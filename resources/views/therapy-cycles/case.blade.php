@@ -1,17 +1,16 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            Przegląd przed analizą: {{ $document->displayName() }}
+            Przegląd danych cyklu przed wysłaniem: {{ $cycle->name }}
         </h2>
     </x-slot>
-
 
     <div class="py-10">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
-            <a href="{{ route('patients.show', $document->patient_id) }}"
+            <a href="{{ route('therapy-cycles.show', $cycle) }}"
                class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-                &larr; Karta pacjenta: {{ $document->patient->last_name }} {{ $document->patient->first_name }}
+                &larr; Asystent terapii
             </a>
 
             @if (session('status'))
@@ -26,13 +25,17 @@
                 </div>
             @endif
 
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+                Sekcje „DOKUMENT” to zatwierdzone wcześniej wersje dokumentów — są dołączone bez zmian. Aby je poprawić, wróć do przeglądu danego dokumentu.
+            </p>
+
             @include('review._gate', [
-                'staleReason' => 'Dokument został odczytany ponownie lub zmieniły się reguły usuwania danych.',
+                'staleReason' => 'Od przygotowania zmieniła się dokumentacja wizyt, plan terapii albo zatwierdzenie któregoś dokumentu.',
                 'routes' => [
-                    'update' => route('anonymizations.update', $document),
-                    'approve' => route('anonymizations.approve', $document),
-                    'revoke' => route('anonymizations.revoke', $document),
-                    'regenerate' => route('anonymizations.store', $document),
+                    'update' => route('clinical-cases.update', $cycle),
+                    'approve' => route('clinical-cases.approve', $cycle),
+                    'revoke' => route('clinical-cases.revoke', $cycle),
+                    'regenerate' => route('clinical-cases.store', $cycle),
                 ],
             ])
         </div>

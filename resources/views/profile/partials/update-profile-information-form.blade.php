@@ -47,6 +47,9 @@
             @endif
         </div>
 
+        <x-form-textarea name="competency_profile" label="Profil kompetencji" :value="$user->competency_profile" :rows="4"
+                         hint="Staż i ukończone kursy, np. „15 lat doświadczenia. Terapia Cyriax, masaż tkanek głębokich, suche igłowanie.” Asystent terapii proponuje metody specjalistyczne tylko z tej listy." />
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

@@ -20,6 +20,29 @@ return [
         'redirect_uri' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    /*
+     * Therapy suggestions. Disabled by default: nothing may leave the server until
+     * the data processing agreement is signed and this is switched on deliberately.
+     */
+    'openrouter' => [
+        'enabled' => (bool) env('OPENROUTER_ENABLED', false),
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'model' => env('OPENROUTER_MODEL', 'anthropic/claude-sonnet-5'),
+
+        // Inference only on these endpoints: both in the EU, both zero data
+        // retention. A wrong tag makes OpenRouter refuse the request rather than
+        // route it elsewhere, so a typo fails safe.
+        'providers' => array_values(array_filter(array_map('trim', explode(',', (string) env(
+            'OPENROUTER_PROVIDERS',
+            'amazon-bedrock/eu-west-1,google-vertex/europe',
+        ))))),
+
+        'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 4000),
+        'timeout' => (int) env('OPENROUTER_TIMEOUT', 90),
+        'daily_limit_per_operator' => (int) env('OPENROUTER_DAILY_LIMIT', 20),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

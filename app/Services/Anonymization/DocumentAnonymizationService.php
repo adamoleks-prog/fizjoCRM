@@ -2,7 +2,6 @@
 
 namespace App\Services\Anonymization;
 
-use App\Enums\RedactionCategory;
 use App\Models\Document;
 use App\Models\DocumentAnonymization;
 use App\Models\Patient;
@@ -11,12 +10,16 @@ use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The review gate: turns a document's text into a draft that may leave the server
- * only after a person has looked at it and approved it.
+ * The document side of the review gate: which documents qualify and how their
+ * draft is produced. The approval rules themselves live in ReviewGate, shared with
+ * the clinical case sent for a therapy suggestion.
  */
 class DocumentAnonymizationService
 {
-    public function __construct(private readonly DocumentAnonymizer $anonymizer) {}
+    public function __construct(
+        private readonly DocumentAnonymizer $anonymizer,
+        private readonly ReviewGate $gate,
+    ) {}
 
     /**
      * Null when the document can go through the gate, otherwise the reason.
@@ -52,7 +55,7 @@ class DocumentAnonymizationService
         $record->fill([
             'anonymized_text' => $result->text,
             'generated_text' => $result->text,
-            'source_hash' => $this->hash($document),
+            'source_hash' => self::sourceHash($document),
             'redaction_report' => $result->report,
             'suspicion_count' => count($result->suspicions),
             'confidence' => $result->isHighConfidence() ? 'high' : 'low',
@@ -70,95 +73,36 @@ class DocumentAnonymizationService
         return $record;
     }
 
-    /**
-     * The document was read again, or the redaction rules changed, since the draft
-     * was made — approving it would approve text nobody reviewed.
-     */
     public function isStale(DocumentAnonymization $record, Document $document): bool
     {
-        return $record->source_hash !== $this->hash($document)
-            || $record->ruleset_version !== DocumentAnonymizer::RULESET_VERSION;
+        return $this->gate->isStale($record, self::sourceHash($document));
     }
 
-    /**
-     * Saves a hand-edited version. Any edit withdraws an earlier approval: what was
-     * approved is not what is now stored.
-     */
     public function updateText(DocumentAnonymization $record, string $text): void
     {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-
-        $record->fill([
-            'anonymized_text' => $text,
-            'manual_edits' => WordDiff::changedWords((string) $record->generated_text, $text),
-            'status' => 'draft',
-        ]);
-
-        $record->approved_by_user_id = null;
-        $record->approved_at = null;
-        $record->save();
+        $this->gate->updateText($record, $text);
     }
 
     /**
-     * What is still wrong with the current text, for the reviewer to act on.
-     *
      * @return array{critical: array<string, int>, findings: array<int, string>}
      */
     public function residue(DocumentAnonymization $record, Document $document): array
     {
-        return $this->anonymizer->residue((string) $record->anonymized_text, $this->patientOf($document));
+        return $this->gate->residue($record, $this->patientOf($document));
     }
 
-    /**
-     * @throws ValidationException when the text still contains an identifier, is out
-     *                             of date, or has flagged fragments nobody acknowledged
-     */
     public function approve(DocumentAnonymization $record, Document $document, User $reviewer, bool $acknowledged): void
     {
-        if ($this->isStale($record, $document)) {
-            throw ValidationException::withMessages([
-                'approval' => 'Dokument został odczytany ponownie lub zmieniły się reguły. Wygeneruj wersję od nowa.',
-            ]);
-        }
-
-        $residue = $this->residue($record, $document);
-
-        // Categories and counts only — repeating the value would put the very
-        // identifier that must not leave into an error message.
-        if ($residue['critical'] !== []) {
-            $parts = array_map(
-                fn (string $category, int $count) => RedactionCategory::from($category)->label()." ({$count})",
-                array_keys($residue['critical']),
-                $residue['critical'],
-            );
-
-            throw ValidationException::withMessages([
-                'approval' => 'Tekst nadal zawiera dane pacjenta: '.implode(', ', $parts).'. Usuń je przed zatwierdzeniem.',
-            ]);
-        }
-
-        if ($residue['findings'] !== [] && ! $acknowledged) {
-            throw ValidationException::withMessages([
-                'acknowledge' => 'Potwierdź, że sprawdziłeś oznaczone fragmenty.',
-            ]);
-        }
-
-        $record->status = 'approved';
-        $record->approved_by_user_id = $reviewer->id;
-        $record->approved_at = now();
-        $record->save();
+        $this->gate->approve($record, self::sourceHash($document), $this->patientOf($document), $reviewer, $acknowledged);
     }
 
-    /** Withdraws an approval without touching the text. */
     public function revoke(DocumentAnonymization $record): void
     {
-        $record->status = 'draft';
-        $record->approved_by_user_id = null;
-        $record->approved_at = null;
-        $record->save();
+        $this->gate->revoke($record);
     }
 
-    private function hash(Document $document): string
+    /** Fingerprint of the document text an anonymised version was made from. */
+    public static function sourceHash(Document $document): string
     {
         return hash('sha256', (string) $document->ocr_text);
     }

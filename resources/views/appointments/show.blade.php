@@ -37,7 +37,14 @@
                     </div>
                     <div>
                         <dt class="text-gray-500 dark:text-gray-400">Cykl terapeutyczny</dt>
-                        <dd>{{ $appointment->therapyCycle?->name ?? '—' }}</dd>
+                        <dd>
+                            @if ($appointment->therapyCycle)
+                                {{ $appointment->therapyCycle->name }}
+                                · <a href="{{ route('therapy-cycles.show', $appointment->therapyCycle) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Asystent terapii</a>
+                            @else
+                                —
+                            @endif
+                        </dd>
                     </div>
 
                     <div>

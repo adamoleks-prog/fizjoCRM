@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
@@ -45,6 +46,22 @@ class TherapyCycle extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class)->orderBy('starts_at');
+    }
+
+    /**
+     * @return HasOne<AiClinicalCase, $this>
+     */
+    public function clinicalCase(): HasOne
+    {
+        return $this->hasOne(AiClinicalCase::class);
+    }
+
+    /**
+     * @return HasMany<AiRecommendation, $this>
+     */
+    public function recommendations(): HasMany
+    {
+        return $this->hasMany(AiRecommendation::class)->latest();
     }
 
     /**

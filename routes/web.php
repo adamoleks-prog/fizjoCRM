@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AiClinicalCaseController;
+use App\Http\Controllers\AiRecommendationController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\GoogleCalendarController;
 use App\Http\Controllers\DashboardController;
@@ -10,6 +12,7 @@ use App\Http\Controllers\MeasurementTemplateController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TherapyCycleController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +52,18 @@ Route::middleware('auth')->group(function () {
     Route::post('documents/{document}/anonymization/approve', [DocumentAnonymizationController::class, 'approve'])->name('anonymizations.approve');
     Route::delete('documents/{document}/anonymization/approval', [DocumentAnonymizationController::class, 'revoke'])->name('anonymizations.revoke');
     Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+
+    Route::get('therapy-cycles/{therapyCycle}', [TherapyCycleController::class, 'show'])->name('therapy-cycles.show');
+
+    Route::post('therapy-cycles/{therapyCycle}/case', [AiClinicalCaseController::class, 'store'])->name('clinical-cases.store');
+    Route::get('therapy-cycles/{therapyCycle}/case', [AiClinicalCaseController::class, 'show'])->name('clinical-cases.show');
+    Route::put('therapy-cycles/{therapyCycle}/case', [AiClinicalCaseController::class, 'update'])->name('clinical-cases.update');
+    Route::post('therapy-cycles/{therapyCycle}/case/approve', [AiClinicalCaseController::class, 'approve'])->name('clinical-cases.approve');
+    Route::delete('therapy-cycles/{therapyCycle}/case/approval', [AiClinicalCaseController::class, 'revoke'])->name('clinical-cases.revoke');
+
+    Route::post('therapy-cycles/{therapyCycle}/recommendations', [AiRecommendationController::class, 'store'])->name('recommendations.store');
+    Route::get('recommendations/{recommendation}', [AiRecommendationController::class, 'show'])->name('recommendations.show');
+    Route::patch('recommendations/{recommendation}/decision', [AiRecommendationController::class, 'decide'])->name('recommendations.decide');
 
     Route::get('reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
 

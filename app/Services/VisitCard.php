@@ -32,7 +32,7 @@ class VisitCard
             'patient' => $patient,
             'physiotherapist' => User::findOrFail($appointment->operator_id),
             'nextVisits' => $nextVisits,
-        ])->setPaper('a4')->output();
+        ])->setPaper('a4')->setOption('isFontSubsettingEnabled', true)->output();
     }
 
     public function filename(Appointment $appointment): string

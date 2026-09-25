@@ -44,7 +44,7 @@ class ConsentSigner
             'signature' => 'data:image/png;base64,'.base64_encode($signature),
             'signedAt' => $signedAt,
             'hash' => hash('sha256', $text),
-        ])->setPaper('a4')->output();
+        ])->setPaper('a4')->setOption('isFontSubsettingEnabled', true)->output();
 
         $path = "patients/{$patient->id}/".Str::uuid().'.pdf';
         Storage::disk(self::DISK)->put($path, $pdf);

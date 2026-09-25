@@ -101,6 +101,7 @@ it('sends exactly the approved text with EU-only, zero-retention routing', funct
             ]
             && $body['response_format']['type'] === 'json_schema'
             && $body['response_format']['json_schema']['strict'] === true
+            && ! array_key_exists('temperature', $body)
             && $body['messages'][1]['content'] === "<dokumentacja>\n".$this->case->anonymized_text."\n</dokumentacja>"
             && str_contains($body['messages'][0]['content'], 'Terapia Cyriax, suche igłowanie.')
             && ! str_contains(json_encode($body, JSON_UNESCAPED_UNICODE), 'Szczepaniak');
@@ -257,7 +258,7 @@ it('fails with a generic reason on an HTTP error, never echoing the body', funct
     $recommendation = AiRecommendation::sole();
 
     expect($recommendation->status)->toBe('failed')
-        ->and($recommendation->failure_reason)->toBe('OpenRouter odrzucił zapytanie (HTTP 404).')
+        ->and($recommendation->failure_reason)->toBe('OpenRouter odrzucił zapytanie (HTTP 404): No endpoints found matching your data policy.')
         ->and($recommendation->failure_reason)->not->toContain($this->case->anonymized_text);
 
     Http::assertSentCount(1);
@@ -293,4 +294,12 @@ it('shows the disabled banner instead of sending when the flag is off', function
         ->get(route('therapy-cycles.show', $this->cycle))
         ->assertOk()
         ->assertSee('Wysyłanie do asystenta jest wyłączone');
+});
+
+it('does not repeat a provider error that quotes the case text', function () {
+    Http::fake(['openrouter.ai/*' => Http::response(['error' => ['message' => 'Invalid input near: '.mb_substr($this->case->anonymized_text, 0, 120)]], 400)]);
+
+    $this->actingAs($this->operator)->post(route('recommendations.store', $this->cycle));
+
+    expect(AiRecommendation::sole()->failure_reason)->toBe('OpenRouter odrzucił zapytanie (HTTP 400).');
 });

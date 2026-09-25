@@ -44,7 +44,9 @@ class OpenRouterClient implements SuggestionProvider
         }
 
         if ($response->failed()) {
-            throw new SuggestionFailed('OpenRouter odrzucił zapytanie (HTTP '.$response->status().').');
+            throw new SuggestionFailed(
+                'OpenRouter odrzucił zapytanie (HTTP '.$response->status().')'.$this->reason($response->json('error.message'), $userMessage).'.'
+            );
         }
 
         $choice = $response->json('choices.0');
@@ -90,8 +92,9 @@ class OpenRouterClient implements SuggestionProvider
                 ],
             ],
             'max_tokens' => $config['max_tokens'],
-            'temperature' => 0.2,
-            'usage' => ['include' => true],
+            // No temperature or other sampling knobs: Claude Sonnet 5 endpoints do not
+            // accept them, and with require_parameters a single unsupported parameter
+            // leaves no endpoint to route to (HTTP 404).
             'provider' => [
                 'only' => $config['providers'],
                 'allow_fallbacks' => false,
@@ -100,5 +103,40 @@ class OpenRouterClient implements SuggestionProvider
                 'require_parameters' => true,
             ],
         ];
+    }
+
+    /**
+     * OpenRouter's own explanation ("No endpoints found…") is what makes a refusal
+     * fixable, so it is kept — but only when it is short and repeats nothing of
+     * what we sent, since a provider error could quote the input.
+     */
+    private function reason(mixed $message, string $userMessage): string
+    {
+        if (! is_string($message)) {
+            return '';
+        }
+
+        $message = trim(preg_replace('/\s+/u', ' ', $message));
+
+        if ($message === '' || mb_strlen($message) > 200 || $this->quotesInput($message, $userMessage)) {
+            return '';
+        }
+
+        return ': '.$message;
+    }
+
+    /** True when any run of five words from the message appears in what we sent. */
+    private function quotesInput(string $message, string $userMessage): bool
+    {
+        $words = preg_split('/\s+/u', $message, -1, PREG_SPLIT_NO_EMPTY);
+        $sent = preg_replace('/\s+/u', ' ', $userMessage);
+
+        for ($i = 0; $i + 5 <= count($words); $i++) {
+            if (str_contains($sent, implode(' ', array_slice($words, $i, 5)))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

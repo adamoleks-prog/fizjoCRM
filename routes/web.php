@@ -53,6 +53,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('documents/{document}/anonymization/approval', [DocumentAnonymizationController::class, 'revoke'])->name('anonymizations.revoke');
     Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 
+    Route::get('therapy-cycles', [TherapyCycleController::class, 'index'])->name('therapy-cycles.index');
+    Route::post('appointments/{appointment}/assistant', [TherapyCycleController::class, 'fromAppointment'])->name('therapy-cycles.from-appointment');
     Route::get('therapy-cycles/{therapyCycle}', [TherapyCycleController::class, 'show'])->name('therapy-cycles.show');
 
     Route::post('therapy-cycles/{therapyCycle}/case', [AiClinicalCaseController::class, 'store'])->name('clinical-cases.store');

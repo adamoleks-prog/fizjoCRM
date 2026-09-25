@@ -23,12 +23,24 @@ use Illuminate\Database\Eloquent\Collection;
  */
 class ClinicalCaseAssembler
 {
+    /** Written sections of a visit, in the order of the examination card. */
+    private const TEXT_FIELDS = [
+        'Wywiad' => 'interview',
+        'Badanie stanu funkcjonowania' => 'examination',
+        'Badania szczegółowe' => 'detailed_examination',
+        'Wnioski' => 'conclusions',
+        'Wykonane zabiegi' => 'procedures',
+        'Przebieg' => 'treatment_notes',
+        'Notatka wewnętrzna' => 'internal_notes',
+        'Zalecenia dla pacjenta' => 'patient_recommendations',
+    ];
+
     public function __construct(private readonly ReviewGate $gate) {}
 
     public function assemble(TherapyCycle $cycle): ClinicalCaseSource
     {
         $patient = $this->patientOf($cycle);
-        $visits = $this->completedVisits($cycle);
+        $visits = $this->documentedVisits($cycle);
         $documents = $this->approvedDocuments($patient);
 
         // Age and a plan alone are not a clinical picture worth sending.
@@ -102,15 +114,17 @@ class ClinicalCaseAssembler
     }
 
     /**
-     * Only visits that took place — a booked or cancelled slot has no findings.
+     * Visits with something written down — including the one in progress, so the
+     * assistant can help straight after the interview. Cancelled and missed visits
+     * are left out, as is a booked slot nobody has filled in yet.
      *
      * @return Collection<int, Appointment>
      */
-    private function completedVisits(TherapyCycle $cycle): Collection
+    private function documentedVisits(TherapyCycle $cycle): Collection
     {
         return $cycle->appointments()
             ->withoutGlobalScope(OperatorScope::class)
-            ->where('status', AppointmentStatus::Completed)
+            ->whereNotIn('status', [AppointmentStatus::Cancelled, AppointmentStatus::NoShow])
             ->with([
                 'icd10',
                 'measurements' => fn ($q) => $q->withoutGlobalScope(OperatorScope::class)->orderBy('id'),
@@ -119,29 +133,39 @@ class ClinicalCaseAssembler
             ])
             ->reorder('starts_at')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->filter(fn (Appointment $visit) => $this->hasContent($visit))
+            ->values();
+    }
+
+    private function hasContent(Appointment $visit): bool
+    {
+        foreach (self::TEXT_FIELDS as $field) {
+            if (filled($visit->{$field})) {
+                return true;
+            }
+        }
+
+        return filled($visit->icd10_code) || $visit->measurements->isNotEmpty() || $visit->painPoints->isNotEmpty();
     }
 
     private function visit(int $number, Appointment $visit): string
     {
-        $lines = ["## WIZYTA {$number} — {$visit->starts_at->format('d.m.Y')}"];
+        // A visit not yet marked as completed is usually the one happening right now.
+        $marker = match (true) {
+            $visit->status !== AppointmentStatus::Scheduled => '',
+            $visit->starts_at->isToday() => ' (bieżąca, w trakcie)',
+            default => ' (nieoznaczona jako odbyta)',
+        };
+        $lines = ["## WIZYTA {$number} — {$visit->starts_at->format('d.m.Y')}{$marker}"];
 
         if ($visit->icd10_code) {
             $lines[] = 'Rozpoznanie ICD-10: '.$visit->icd10_code.($visit->icd10Name() ? ' '.$visit->icd10Name() : '');
         }
 
-        $fields = [
-            'Wywiad' => $visit->interview,
-            'Badanie stanu funkcjonowania' => $visit->examination,
-            'Badania szczegółowe' => $visit->detailed_examination,
-            'Wnioski' => $visit->conclusions,
-            'Wykonane zabiegi' => $visit->procedures,
-            'Przebieg' => $visit->treatment_notes,
-            'Notatka wewnętrzna' => $visit->internal_notes,
-            'Zalecenia dla pacjenta' => $visit->patient_recommendations,
-        ];
+        foreach (self::TEXT_FIELDS as $label => $field) {
+            $value = $visit->{$field};
 
-        foreach ($fields as $label => $value) {
             if (filled($value)) {
                 $lines[] = "{$label}:\n".trim(str_replace(["\r\n", "\r"], "\n", $value));
             }

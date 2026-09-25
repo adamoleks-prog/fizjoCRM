@@ -36,8 +36,27 @@
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
                 <h3 class="font-semibold">1. Dane do wysłania</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Odbyte wizyty w cyklu: {{ $completedVisits }}. Do danych trafiają wywiad, badania, wnioski, zabiegi, notatki, pomiary, mapa dolegliwości, plan terapii, choroby współistniejące i zatwierdzone dokumenty — po usunięciu danych osobowych. Nazwa cyklu i tytuły dokumentów nie są wysyłane.
+                    Asystent korzysta z tego, co już zapisałeś — także w trakcie bieżącej wizyty, zaraz po wywiadzie i badaniu. Do danych trafiają wywiad, badania, wnioski, zabiegi, notatki, pomiary, mapa dolegliwości, plan terapii, choroby współistniejące i zatwierdzone dokumenty pacjenta — po usunięciu danych osobowych. Nazwa cyklu i tytuły dokumentów nie są wysyłane.
                 </p>
+
+                <ul class="mt-3 text-sm divide-y divide-gray-100 dark:divide-gray-700">
+                    @forelse ($visits as $visit)
+                        <li class="py-1.5 flex flex-wrap items-center justify-between gap-2">
+                            <span>
+                                {{ $visit->starts_at->format('d.m.Y H:i') }}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $visit->status->label() }}</span>
+                                @if (in_array($visit->status, [\App\Enums\AppointmentStatus::Cancelled, \App\Enums\AppointmentStatus::NoShow], true))
+                                    <span class="text-xs text-gray-400">(pomijana)</span>
+                                @elseif (blank($visit->interview) && blank($visit->examination) && blank($visit->detailed_examination))
+                                    <span class="text-xs text-amber-700 dark:text-amber-400">(brak wywiadu i badania)</span>
+                                @endif
+                            </span>
+                            <a href="{{ route('appointments.edit', $visit) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Uzupełnij dokumentację</a>
+                        </li>
+                    @empty
+                        <li class="py-1.5 text-gray-500 dark:text-gray-400">Brak wizyt w tym cyklu.</li>
+                    @endforelse
+                </ul>
 
                 <div class="mt-4 flex flex-wrap items-center gap-3 text-sm">
                     @if (! $case)

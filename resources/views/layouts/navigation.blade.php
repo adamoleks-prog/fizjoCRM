@@ -24,6 +24,9 @@
                     <x-nav-link :href="route('measurements.index')" :active="request()->routeIs('measurements.*')">
                         Pomiary
                     </x-nav-link>
+                    <x-nav-link :href="route('therapy-cycles.index')" :active="request()->routeIs('therapy-cycles.*', 'clinical-cases.*', 'recommendations.*')">
+                        Asystent terapii
+                    </x-nav-link>
                     <x-nav-link :href="route('reports.monthly')" :active="request()->routeIs('reports.*')">
                         Raporty
                     </x-nav-link>
@@ -94,6 +97,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('measurements.index')" :active="request()->routeIs('measurements.*')">
                 Pomiary
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('therapy-cycles.index')" :active="request()->routeIs('therapy-cycles.*', 'clinical-cases.*', 'recommendations.*')">
+                Asystent terapii
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('reports.monthly')" :active="request()->routeIs('reports.*')">
                 Raporty

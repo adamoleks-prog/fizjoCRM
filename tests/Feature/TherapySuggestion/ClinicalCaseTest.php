@@ -244,3 +244,85 @@ it('keeps another operator out of the cycle pages', function () {
     $this->actingAs($other)->post(route('clinical-cases.store', $this->cycle))->assertNotFound();
     $this->actingAs($other)->post(route('clinical-cases.approve', $this->cycle))->assertNotFound();
 });
+
+/* ---------- during the visit ---------- */
+
+it('includes the visit in progress as soon as the interview is written', function () {
+    Appointment::factory()->forCycle($this->cycle)->create([
+        'starts_at' => today()->setTime(10, 0),
+        'ends_at' => today()->setTime(10, 45),
+        'status' => AppointmentStatus::Scheduled,
+        'interview' => 'Ból barku od tygodnia.',
+    ]);
+
+    expect(app(ClinicalCaseAssembler::class)->assemble($this->cycle)->raw)
+        ->toContain('## WIZYTA 2 — '.today()->format('d.m.Y').' (bieżąca, w trakcie)')
+        ->toContain('Ból barku od tygodnia.');
+});
+
+it('leaves out a booked visit nobody has written anything in yet', function () {
+    Appointment::factory()->forCycle($this->cycle)->create([
+        'starts_at' => now()->addWeek(),
+        'ends_at' => now()->addWeek()->addMinutes(45),
+        'status' => AppointmentStatus::Scheduled,
+    ]);
+
+    expect(app(ClinicalCaseAssembler::class)->assemble($this->cycle)->raw)->not->toContain('WIZYTA 2');
+});
+
+it('prepares a case from a single visit in progress', function () {
+    $cycle = TherapyCycle::factory()->forPatient($this->patient)->create();
+    Appointment::factory()->forCycle($cycle)->create([
+        'status' => AppointmentStatus::Scheduled,
+        'interview' => 'Ból kolana przy schodzeniu.',
+    ]);
+
+    $this->actingAs($this->operator)
+        ->post(route('clinical-cases.store', $cycle))
+        ->assertSessionHasNoErrors();
+
+    expect(AiClinicalCase::where('therapy_cycle_id', $cycle->id)->sole()->anonymized_text)
+        ->toContain('Ból kolana przy schodzeniu.');
+});
+
+/* ---------- entry points ---------- */
+
+it('opens the assistant from a visit, starting a cycle when it has none', function () {
+    $visit = Appointment::factory()->forOperator($this->operator)->create([
+        'patient_id' => $this->patient->id,
+        'status' => AppointmentStatus::Scheduled,
+    ]);
+
+    $response = $this->actingAs($this->operator)->post(route('therapy-cycles.from-appointment', $visit));
+
+    $cycle = $visit->fresh()->therapyCycle;
+
+    expect($cycle)->not->toBeNull()
+        ->and($cycle->patient_id)->toBe($this->patient->id)
+        ->and($cycle->operator_id)->toBe($this->operator->id);
+
+    $response->assertRedirect(route('therapy-cycles.show', $cycle));
+
+    // A second click reuses the same cycle.
+    $this->actingAs($this->operator)
+        ->post(route('therapy-cycles.from-appointment', $visit))
+        ->assertRedirect(route('therapy-cycles.show', $cycle));
+
+    expect(TherapyCycle::where('patient_id', $this->patient->id)->count())->toBe(2);
+});
+
+it('lists only the operator\'s own cycles in the menu page', function () {
+    $other = User::factory()->operator()->create();
+    $foreign = TherapyCycle::factory()->forPatient(Patient::factory()->forOperator($other)->create())->create(['name' => 'Cudzy cykl']);
+
+    $this->actingAs($this->operator)
+        ->get(route('therapy-cycles.index'))
+        ->assertOk()
+        ->assertSee('Asystent terapii')
+        ->assertSee(route('therapy-cycles.show', $this->cycle))
+        ->assertDontSee('Cudzy cykl');
+
+    $this->actingAs($other)
+        ->post(route('therapy-cycles.from-appointment', $this->visit))
+        ->assertNotFound();
+});

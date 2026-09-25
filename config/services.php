@@ -39,7 +39,7 @@ return [
         ))))),
 
         'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 16000),
-        'timeout' => (int) env('OPENROUTER_TIMEOUT', 300),
+        'timeout' => (int) env('OPENROUTER_TIMEOUT', 600),
         'daily_limit_per_operator' => (int) env('OPENROUTER_DAILY_LIMIT', 20),
     ],
 

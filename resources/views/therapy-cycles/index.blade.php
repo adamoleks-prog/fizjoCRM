@@ -7,7 +7,7 @@
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-4">
-            <p class="text-sm text-gray-600 dark:text-gray-400">
+            <p class="px-4 sm:px-0 text-sm text-gray-600 dark:text-gray-400">
                 Wybierz cykl terapii, dla którego chcesz przygotować podpowiedź planu. W trakcie wizyty najszybciej otworzysz asystenta przyciskiem „Asystent terapii” na stronie wizyty — jeśli wizyta nie ma jeszcze cyklu, zostanie on założony.
             </p>
 

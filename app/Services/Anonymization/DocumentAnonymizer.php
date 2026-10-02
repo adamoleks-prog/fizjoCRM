@@ -4,6 +4,7 @@ namespace App\Services\Anonymization;
 
 use App\Enums\RedactionCategory;
 use App\Models\Patient;
+use App\Support\PersonalData;
 use Carbon\Carbon;
 
 /**
@@ -81,7 +82,9 @@ class DocumentAnonymizer
         }
 
         if ($patient->phone) {
-            $text = $this->replace($text, $this->digitsPattern($patient->phone), RedactionCategory::Phone);
+            // The national digits: the pattern itself allows an optional +48, and a
+            // stored "+48 …" would otherwise make the prefix mandatory.
+            $text = $this->replace($text, $this->digitsPattern(PersonalData::nationalDigits($patient->phone) ?? $patient->phone), RedactionCategory::Phone);
         }
 
         if ($patient->email) {

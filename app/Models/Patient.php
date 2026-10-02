@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use App\Models\Scopes\OperatorScope;
+use App\Services\Messaging\PhoneNumber;
+use App\Support\PersonalData;
 use Database\Factories\PatientFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +29,16 @@ class Patient extends Model
             'date_of_birth' => 'date',
             'reminders_enabled' => 'boolean',
         ];
+    }
+
+    /** Polish numbers are kept as "+48 602 118 940", however they were typed. */
+    protected function phone(): Attribute
+    {
+        return Attribute::make(set: function (?string $value) {
+            $digits = PersonalData::nationalDigits($value);
+
+            return $digits !== null && strlen($digits) === 9 ? PhoneNumber::format('48'.$digits) : $value;
+        });
     }
 
     public function getFullNameAttribute(): string

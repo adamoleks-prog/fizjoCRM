@@ -7,6 +7,7 @@ use App\Models\ConsentTemplate;
 use App\Models\User;
 use App\Services\Booking\OnlineBooking;
 use App\Services\Booking\Recaptcha;
+use App\Support\PersonalData;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -79,17 +80,15 @@ class BookingController extends Controller
         $data = $request->validate([
             'typ' => ['required', 'string', Rule::in(array_keys($this->booking->visitTypes()))],
             'starts_at' => ['required', 'date_format:Y-m-d H:i'],
-            'first_name' => ['required', 'string', 'max:40', 'regex:/^\p{L}+$/u'],
-            'last_name' => ['required', 'string', 'max:60', 'regex:/^\p{L}+(-\p{L}+)?$/u'],
-            'phone' => ['required', 'regex:/^[0-9]{9}$/'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'first_name' => PersonalData::firstName(),
+            'last_name' => PersonalData::lastName(),
+            'phone' => PersonalData::phone(required: true, mobileOnly: true),
+            'email' => PersonalData::email(),
             'reason' => ['nullable', 'string', 'max:1000'],
             'consent' => ['accepted'],
         ], [
             'consent.accepted' => 'Zaznacz, że zapoznałeś(-aś) się z informacją o przetwarzaniu danych.',
-            'first_name.regex' => 'Imię może zawierać tylko litery — bez cyfr, spacji i znaków specjalnych.',
-            'last_name.regex' => 'Nazwisko może zawierać tylko litery (dwuczłonowe połącz myślnikiem, np. Nowak-Kowalska).',
-            'phone.regex' => 'Podaj 9 cyfr numeru telefonu komórkowego, bez spacji i bez +48.',
+            ...PersonalData::messages(),
         ]);
 
         if ($this->recaptcha->isActive() && ! $this->recaptcha->passes($request->input('recaptcha_token'), $request->ip())) {

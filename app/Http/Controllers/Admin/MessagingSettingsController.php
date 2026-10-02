@@ -10,6 +10,7 @@ use App\Services\Messaging\MessagingNotConfigured;
 use App\Services\Messaging\OutgoingMail;
 use App\Services\Messaging\SmsFailed;
 use App\Services\Messaging\SmsGateway;
+use App\Support\PersonalData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -44,7 +45,7 @@ class MessagingSettingsController extends Controller
             'mail_username' => ['nullable', 'string', 'max:255'],
             'mail_password' => ['nullable', 'string', 'max:255'],
             'mail_password_clear' => ['boolean'],
-            'mail_from_address' => ['nullable', 'email', 'max:255', 'required_with:mail_host'],
+            'mail_from_address' => ['nullable', 'email:rfc', 'regex:'.PersonalData::EMAIL, 'max:255', 'required_with:mail_host'],
             'mail_from_name' => ['nullable', 'string', 'max:120'],
             'sms_token' => ['nullable', 'string', 'max:255'],
             'sms_token_clear' => ['boolean'],
@@ -117,7 +118,7 @@ class MessagingSettingsController extends Controller
 
     public function testEmail(Request $request, OutgoingMail $mail): RedirectResponse
     {
-        $data = $request->validate(['test_email' => ['required', 'email']]);
+        $data = $request->validate(['test_email' => PersonalData::email(required: true)]);
 
         try {
             $mail->send($data['test_email'], new TestMessageMail);

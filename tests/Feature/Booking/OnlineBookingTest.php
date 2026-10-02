@@ -432,7 +432,7 @@ it('accepts Polish letters and a double-barrelled surname, storing them capitali
 it('shows the fixed +48 prefix on the form', function () {
     $this->get(route('booking.show', [$this->physio, 'typ' => 'kolejna', 'data' => '2026-10-06', 'godzina' => '10:00']))
         ->assertSee('+48')
-        ->assertSee('pattern="[0-9]{9}"', false);
+        ->assertSee('pattern="[4-8][0-9]{8}"', false);
 });
 
 /* ---------- deciding about a booking from another number ---------- */
@@ -465,7 +465,7 @@ it('confirms without touching the phone unless asked', function () {
 
     $this->actingAs($this->physio)->post(route('booking.approve', $appointment));
 
-    expect($this->existing->fresh()->phone)->toBe('602 118 940');
+    expect($this->existing->fresh()->phone)->toBe('+48 602 118 940');
 });
 
 it('moves the visit to a new card when it is someone else', function () {
@@ -485,7 +485,7 @@ it('moves the visit to a new card when it is someone else', function () {
         ->and($patient->email)->toBe('jan2@example.com')
         ->and($patient->operator_id)->toBe($this->physio->id)
         ->and($appointment->status)->toBe(AppointmentStatus::Scheduled)
-        ->and($this->existing->fresh()->phone)->toBe('602 118 940');
+        ->and($this->existing->fresh()->phone)->toBe('+48 602 118 940');
 
     Http::assertSent(fn (Request $r) => ($r['to'] ?? null) === '48699888777' && str_contains($r['message'] ?? '', 'Potwierdzamy wizyte'));
 });
@@ -551,3 +551,12 @@ it('ignores the problem field on a follow-up booking', function () {
 
     expect(Appointment::withoutGlobalScopes()->sole()->reportedProblem())->toBeNull();
 });
+
+it('rejects fake or landline numbers and bad e-mails in online booking', function (array $fields, string $error) {
+    ($this->book)($fields)->assertSessionHasErrors($error);
+})->with([
+    'all ones' => [['phone' => '111111111'], 'phone'],
+    'landline' => [['phone' => '226001122'], 'phone'],
+    'e-mail without tld' => [['email' => 'jan@gmail'], 'email'],
+    'digits in name' => [['first_name' => '123123'], 'first_name'],
+]);

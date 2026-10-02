@@ -3,28 +3,37 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div>
         <x-input-label for="first_name" value="Imię" />
-        <x-text-input id="first_name" name="first_name" class="block mt-1 w-full" required
+        <x-text-input id="first_name" name="first_name" class="block mt-1 w-full" required maxlength="40"
+                      oninput="this.value = this.value.replace(/[^\p{L}]/gu, '')"
                       value="{{ old('first_name', $patient?->first_name) }}" />
         <x-input-error :messages="$errors->get('first_name')" class="mt-2" />
     </div>
 
     <div>
         <x-input-label for="last_name" value="Nazwisko" />
-        <x-text-input id="last_name" name="last_name" class="block mt-1 w-full" required
+        <x-text-input id="last_name" name="last_name" class="block mt-1 w-full" required maxlength="60"
+                      oninput="this.value = this.value.replace(/[^\p{L}-]/gu, '').replace(/-{2,}/g, '-')"
                       value="{{ old('last_name', $patient?->last_name) }}" />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Same litery; nazwisko dwuczłonowe połącz myślnikiem.</p>
         <x-input-error :messages="$errors->get('last_name')" class="mt-2" />
     </div>
 
     <div>
         <x-input-label for="phone" value="Telefon" />
-        <x-text-input id="phone" name="phone" class="block mt-1 w-full"
-                      value="{{ old('phone', $patient?->phone) }}" />
+        <div class="mt-1 flex rounded-md shadow-sm">
+            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 select-none">+48</span>
+            <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="9" placeholder="600123456"
+                   value="{{ old('phone', \App\Support\PersonalData::nationalDigits($patient?->phone)) }}"
+                   oninput="this.value = this.value.replace(/\D/g, '').slice(0, 9)"
+                   class="block w-full rounded-none rounded-r-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500">
+        </div>
         <x-input-error :messages="$errors->get('phone')" class="mt-2" />
     </div>
 
     <div>
         <x-input-label for="email" value="E-mail" />
-        <x-text-input id="email" name="email" type="email" class="block mt-1 w-full"
+        <x-text-input id="email" name="email" type="email" class="block mt-1 w-full" maxlength="255"
+                      pattern="[^@\s]+@[^@\s]+\.[A-Za-z]{2,}" title="Adres e-mail, np. jan.kowalski@gmail.com"
                       value="{{ old('email', $patient?->email) }}" />
         <x-input-error :messages="$errors->get('email')" class="mt-2" />
     </div>

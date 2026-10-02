@@ -128,6 +128,23 @@
                     </div>
                 </section>
 
+                {{-- Booking test mode --}}
+                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
+                    <h3 class="font-semibold">Tryb testowy zapisów online</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Do sprawdzenia zapisów bez bramki SMS: kod nie jest wysyłany, a zamiast niego działa stały kod <strong class="font-mono">{{ \App\Services\Booking\OnlineBooking::TEST_CODE }}</strong>.
+                        Każdy, kto zna telefon i nazwisko pacjenta, mógłby wtedy umówić wizytę na jego kartę — dlatego tryb wyłącza się sam po {{ \App\Services\Booking\OnlineBooking::TEST_MODE_HOURS }} godzinach, a strona zapisów pokazuje baner „TRYB TESTOWY”.
+                    </p>
+                    <input type="hidden" name="booking_test_mode" value="0">
+                    <label class="mt-3 flex items-center gap-2 text-sm">
+                        <input type="checkbox" name="booking_test_mode" value="1" class="rounded border-gray-300 dark:border-gray-700 text-indigo-600" @checked($bookingTestUntil)>
+                        Włącz tryb testowy
+                        @if ($bookingTestUntil)
+                            <span class="text-amber-700 dark:text-amber-400">— aktywny do {{ $bookingTestUntil->format('d.m.Y H:i') }}</span>
+                        @endif
+                    </label>
+                </section>
+
                 <x-primary-button>Zapisz ustawienia</x-primary-button>
             </form>
 

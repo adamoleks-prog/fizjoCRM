@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\Scopes\OperatorScope;
 use App\Models\User;
 use App\Services\CollisionChecker;
+use App\Services\Messaging\AppSettings;
 use App\Services\Messaging\PhoneNumber;
 use App\Services\Messaging\ReminderMessage;
 use App\Services\Messaging\SmsGateway;
@@ -35,11 +36,30 @@ class OnlineBooking
 
     private const MAX_CODE_ATTEMPTS = 5;
 
+    public const TEST_CODE = '123456';
+
+    public const TEST_MODE_HOURS = 48;
+
     public function __construct(
         private readonly SlotService $slots,
         private readonly CollisionChecker $collisions,
         private readonly SmsGateway $sms,
+        private readonly AppSettings $settings,
     ) {}
+
+    /** When test mode ends, or null when it is off (or has run out). */
+    public static function testModeUntil(AppSettings $settings): ?Carbon
+    {
+        $until = $settings->get('booking.test_until');
+
+        return $until && Carbon::parse($until)->isFuture() ? Carbon::parse($until) : null;
+    }
+
+    /** No SMS gateway yet: codes are not sent and the fixed test code works. */
+    public function isTestMode(): bool
+    {
+        return self::testModeUntil($this->settings) !== null;
+    }
 
     /** @return Collection<int, User> */
     public function physiotherapists(): Collection
@@ -49,7 +69,7 @@ class OnlineBooking
 
     public function isOpen(User $physiotherapist): bool
     {
-        return $physiotherapist->online_booking_enabled && $this->sms->isConfigured();
+        return $physiotherapist->online_booking_enabled && ($this->sms->isConfigured() || $this->isTestMode());
     }
 
     public function visitMinutes(User $physiotherapist, bool $firstVisit): int
@@ -137,7 +157,7 @@ class OnlineBooking
             }
         }
 
-        $code = (string) random_int(100000, 999999);
+        $code = $this->isTestMode() ? self::TEST_CODE : (string) random_int(100000, 999999);
 
         $id = DB::table('booking_verifications')->insertGetId([
             'phone' => $phone,
@@ -158,7 +178,9 @@ class OnlineBooking
         ]);
 
         try {
-            $this->sms->send($phone, "Kod zapisu na wizyte: {$code}. Wazny ".self::CODE_TTL_MINUTES.' minut. Nie podawaj go nikomu.');
+            if (! $this->isTestMode()) {
+                $this->sms->send($phone, "Kod zapisu na wizyte: {$code}. Wazny ".self::CODE_TTL_MINUTES.' minut. Nie podawaj go nikomu.');
+            }
         } catch (Throwable) {
             DB::table('booking_verifications')->where('id', $id)->delete();
 

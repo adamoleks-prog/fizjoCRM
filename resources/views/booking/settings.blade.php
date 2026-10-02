@@ -40,7 +40,11 @@
                     @unless ($hasSchedule) <span class="text-gray-500">— bez niego pacjenci zobaczą domyślne godziny gabinetu.</span> @endunless</p>
                 <p>{{ filled($user->practice_phone) ? '✅' : '⚠️' }} Telefon gabinetu w <a href="{{ route('profile.edit') }}" class="underline">profilu</a> — pokazywany pacjentom do kontaktu.</p>
 
-                @if ($user->online_booking_enabled && $smsReady)
+                @if ($testMode)
+                    <p>🧪 Tryb testowy zapisów jest włączony — zamiast SMS-a działa kod <strong class="font-mono">{{ \App\Services\Booking\OnlineBooking::TEST_CODE }}</strong>.</p>
+                @endif
+
+                @if ($user->online_booking_enabled && ($smsReady || $testMode))
                     <div class="mt-3 p-3 rounded-md bg-indigo-50 dark:bg-indigo-900/30">
                         Twoja strona zapisów: <a href="{{ route('booking.show', $user) }}" target="_blank" class="font-mono underline break-all">{{ route('booking.show', $user) }}</a>
                         <br><span class="text-xs text-gray-600 dark:text-gray-400">Wspólna strona wszystkich fizjoterapeutów: {{ route('booking.index') }}</span>

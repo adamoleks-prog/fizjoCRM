@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\TestMessageMail;
+use App\Services\Booking\OnlineBooking;
 use App\Services\Messaging\AppSettings;
 use App\Services\Messaging\MessagingNotConfigured;
 use App\Services\Messaging\OutgoingMail;
@@ -29,6 +30,7 @@ class MessagingSettingsController extends Controller
             'settings' => $this->settings,
             'hasPassword' => $this->settings->has('mail.password'),
             'hasToken' => $this->settings->has('sms.token'),
+            'bookingTestUntil' => OnlineBooking::testModeUntil($this->settings),
         ]);
     }
 
@@ -49,6 +51,7 @@ class MessagingSettingsController extends Controller
             'reminders_email_enabled' => ['boolean'],
             'reminders_sms_enabled' => ['boolean'],
             'reminders_hours_before' => ['required', 'integer', 'between:3,72'],
+            'booking_test_mode' => ['boolean'],
         ], [
             'sms_sender.regex' => 'Nazwa nadawcy SMS: tylko litery bez polskich znaków, cyfry, spacja, kropka i myślnik.',
             'mail_from_address.required_with' => 'Podaj adres nadawcy.',
@@ -78,6 +81,15 @@ class MessagingSettingsController extends Controller
             $values['sms.token'] = $data['sms_token'];
         } elseif ($request->boolean('sms_token_clear')) {
             $values['sms.token'] = null;
+        }
+
+        // Test mode switches itself off: a fixed code on a public page must not
+        // be left on by accident.
+        $wasOn = OnlineBooking::testModeUntil($this->settings) !== null;
+        if ($request->boolean('booking_test_mode') && ! $wasOn) {
+            $values['booking.test_until'] = now()->addHours(OnlineBooking::TEST_MODE_HOURS)->toIso8601String();
+        } elseif (! $request->boolean('booking_test_mode')) {
+            $values['booking.test_until'] = null;
         }
 
         $this->settings->put($values);

@@ -19,6 +19,7 @@ class AppSettings
         'mail.from_address', 'mail.from_name',
         'sms.token', 'sms.sender',
         'reminders.email_enabled', 'reminders.sms_enabled', 'reminders.hours_before',
+        'booking.test_until',
     ];
 
     /** @var array<string, string|null>|null */

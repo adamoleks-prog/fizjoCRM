@@ -26,6 +26,7 @@ class BookingSettingsController extends Controller
             'slotMinutes' => $schedule->slotMinutes($user->id),
             'hasSchedule' => $schedule->hasOwnPattern($user->id),
             'smsReady' => $sms->isConfigured(),
+            'testMode' => app(OnlineBooking::class)->isTestMode(),
             'pending' => Appointment::query()
                 ->with('patient')
                 ->where('operator_id', $user->id)

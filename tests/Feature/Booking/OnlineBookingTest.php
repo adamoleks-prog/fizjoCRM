@@ -220,3 +220,51 @@ it('keeps approval to the physiotherapist who owns the visit', function () {
         ->post(route('booking.approve', $appointment))
         ->assertNotFound();
 });
+
+/* ---------- test mode ---------- */
+
+it('accepts the fixed code without sending SMS in test mode', function () {
+    app(AppSettings::class)->put(['sms.token' => null]);
+    Http::fake();
+
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin)->put(route('admin.messaging.update'), [
+        'mail_encryption' => 'tls',
+        'reminders_hours_before' => 24,
+        'booking_test_mode' => 1,
+    ])->assertSessionHasNoErrors();
+
+    auth()->logout();
+
+    $this->get(route('booking.show', [$this->physio, 'typ' => 'kolejna']))
+        ->assertOk()
+        ->assertSee('TRYB TESTOWY');
+
+    ($this->book)()->assertRedirect(route('booking.code'));
+    $this->post(route('booking.confirm'), ['code' => '123456'])->assertRedirect(route('booking.done'));
+
+    expect(Appointment::withoutGlobalScopes()->sole()->patient_id)->toBe($this->existing->id);
+    Http::assertNothingSent();
+});
+
+it('switches test mode off by itself after 48 hours', function () {
+    app(AppSettings::class)->put(['sms.token' => null]);
+
+    $this->actingAs(User::factory()->admin()->create())->put(route('admin.messaging.update'), [
+        'mail_encryption' => 'tls', 'reminders_hours_before' => 24, 'booking_test_mode' => 1,
+    ]);
+    auth()->logout();
+
+    $this->get(route('booking.show', $this->physio))->assertOk();
+
+    $this->travel(49)->hours();
+    app()->forgetScopedInstances();
+
+    $this->get(route('booking.show', $this->physio))->assertNotFound();
+});
+
+it('does not accept the test code when test mode is off', function () {
+    ($this->book)();
+
+    $this->post(route('booking.confirm'), ['code' => '123456'])->assertSessionHasErrors('code');
+});

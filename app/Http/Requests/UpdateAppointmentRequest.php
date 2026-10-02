@@ -11,6 +11,7 @@ use App\Models\Appointment;
 use App\Models\MeasurementTemplate;
 use App\Rules\SlotAligned;
 use App\Services\CollisionChecker;
+use App\Services\SlotService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -29,16 +30,25 @@ class UpdateAppointmentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $slot = (int) config('appointments.slot_minutes');
+        $operatorId = $this->appointment()->operator_id;
+        $slots = app(SlotService::class);
+        $slot = $slots->slotMinutes($operatorId);
+
+        // Only a moved visit must fit today's hours: documenting a past visit must
+        // keep working after the physiotherapist changes their schedule.
+        $moved = $this->filled('starts_at')
+            && ! Carbon::parse($this->input('starts_at'))->equalTo($this->appointment()->starts_at);
+        $durationChanged = (int) $this->input('duration_minutes')
+            !== (int) $this->appointment()->starts_at->diffInMinutes($this->appointment()->ends_at, absolute: true);
 
         return [
-            'starts_at' => ['required', 'date', app(SlotAligned::class)],
+            'starts_at' => ['required', 'date', ...($moved ? [new SlotAligned($slots, $operatorId)] : [])],
             'duration_minutes' => [
                 'required',
                 'integer',
-                'min:'.$slot,
+                'min:'.($moved || $durationChanged ? $slot : 1),
                 'max:'.config('appointments.max_duration_minutes'),
-                'multiple_of:'.$slot,
+                ...($moved || $durationChanged ? ['multiple_of:'.$slot] : []),
             ],
             'status' => ['required', new Enum(AppointmentStatus::class)],
             'icd10_code' => ['nullable', 'string', 'max:16', 'exists:icd10_codes,code'],

@@ -10,6 +10,7 @@ use App\Services\Messaging\SmsApiGateway;
 use App\Services\Messaging\SmsGateway;
 use App\Services\TherapySuggestion\OpenRouterClient;
 use App\Services\TherapySuggestion\SuggestionProvider;
+use App\Services\WorkSchedule;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Read once per request (or queue job), dropped between them.
         $this->app->scoped(AppSettings::class);
+        $this->app->scoped(WorkSchedule::class);
 
         // Tens of thousands of entries — built once per process, not per document.
         $this->app->singleton(NameDictionaries::class);

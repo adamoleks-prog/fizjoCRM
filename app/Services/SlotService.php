@@ -9,27 +9,37 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
+/**
+ * Bookable slots of one physiotherapist, cut from their working hours.
+ */
 class SlotService
 {
-    public function slotMinutes(): int
+    public function __construct(private readonly WorkSchedule $schedule) {}
+
+    public function slotMinutes(int $operatorId): int
     {
-        return (int) config('appointments.slot_minutes');
+        return $this->schedule->slotMinutes($operatorId);
     }
 
-    public function isWorkingDay(CarbonInterface $date): bool
+    public function isWorkingDay(int $operatorId, CarbonInterface $date): bool
     {
-        return in_array($date->isoWeekday(), config('appointments.working_days'), true);
+        return $this->schedule->intervals($operatorId, $date)->isNotEmpty();
     }
 
     /**
-     * Whether the moment sits exactly on a slot boundary counted from the start
-     * of the working day (e.g. 08:00, 08:30, 09:00 for 30-minute slots).
+     * Whether the moment is the start of a slot: inside a working period and a
+     * whole number of slots after that period's start (08:00, 08:30, … for
+     * 30-minute slots).
      */
-    public function isOnSlotBoundary(CarbonInterface $moment): bool
+    public function isOnSlotBoundary(int $operatorId, CarbonInterface $moment): bool
     {
-        $dayStart = $this->dayStart($moment);
+        $slot = $this->slotMinutes($operatorId);
 
-        return $dayStart->diffInMinutes($moment, absolute: true) % $this->slotMinutes() === 0;
+        return $this->schedule->intervals($operatorId, $moment)->contains(
+            fn (array $period) => $moment->gte($period[0])
+                && $moment->lt($period[1])
+                && $period[0]->diffInMinutes($moment, absolute: true) % $slot === 0,
+        );
     }
 
     /**
@@ -39,26 +49,31 @@ class SlotService
      */
     public function daySlots(int $operatorId, CarbonInterface $date, ?int $ignoreAppointmentId = null): Collection
     {
-        if (! $this->isWorkingDay($date)) {
+        $periods = $this->schedule->intervals($operatorId, $date);
+
+        if ($periods->isEmpty()) {
             return collect();
         }
 
         $taken = $this->takenRanges($operatorId, $date, $ignoreAppointmentId);
-
+        $length = $this->slotMinutes($operatorId);
         $slots = collect();
-        $cursor = $this->dayStart($date);
-        $dayEnd = $this->dayEnd($date);
 
-        while ($cursor->lt($dayEnd)) {
-            $slotEnd = $cursor->copy()->addMinutes($this->slotMinutes());
+        foreach ($periods as [$start, $end]) {
+            $cursor = $start->copy();
 
-            $slots->push([
-                'starts_at' => $cursor->copy(),
-                'ends_at' => $slotEnd,
-                'available' => ! $this->overlapsAny($cursor, $slotEnd, $taken),
-            ]);
+            // A slot that would run past the end of the period is not offered.
+            while ($cursor->copy()->addMinutes($length)->lte($end)) {
+                $slotEnd = $cursor->copy()->addMinutes($length);
 
-            $cursor = $slotEnd;
+                $slots->push([
+                    'starts_at' => $cursor->copy(),
+                    'ends_at' => $slotEnd,
+                    'available' => ! $this->overlapsAny($cursor, $slotEnd, $taken),
+                ]);
+
+                $cursor = $slotEnd;
+            }
         }
 
         return $slots;
@@ -78,7 +93,8 @@ class SlotService
 
     /**
      * How many consecutive free slots start at the given moment — caps the
-     * duration the form may offer so a long visit cannot swallow a booked slot.
+     * duration the form may offer so a long visit cannot swallow a booked slot
+     * or run into a break.
      */
     public function consecutiveFreeSlots(int $operatorId, CarbonInterface $startsAt): int
     {
@@ -90,16 +106,34 @@ class SlotService
         }
 
         $count = 0;
+        $previousEnd = null;
 
         foreach ($slots->slice($index) as $slot) {
-            if (! $slot['available']) {
+            if (! $slot['available'] || ($previousEnd && ! $previousEnd->equalTo($slot['starts_at']))) {
                 break;
             }
 
             $count++;
+            $previousEnd = $slot['ends_at'];
         }
 
         return $count;
+    }
+
+    /** The first day from $from on with any working hours, within the next two months. */
+    public function nextWorkingDay(int $operatorId, CarbonInterface $from): Carbon
+    {
+        $date = Carbon::parse($from);
+
+        for ($i = 0; $i < 62; $i++) {
+            if ($this->isWorkingDay($operatorId, $date)) {
+                return $date;
+            }
+
+            $date = $date->addDay();
+        }
+
+        return Carbon::parse($from);
     }
 
     /**
@@ -111,7 +145,8 @@ class SlotService
             ->withoutGlobalScope(OperatorScope::class)
             ->where('operator_id', $operatorId)
             ->where('status', '!=', AppointmentStatus::Cancelled)
-            ->whereBetween('starts_at', [$this->dayStart($date), $this->dayEnd($date)])
+            ->where('starts_at', '<', Carbon::parse($date)->endOfDay())
+            ->where('ends_at', '>', Carbon::parse($date)->startOfDay())
             ->when($ignoreAppointmentId, fn ($query) => $query->whereKeyNot($ignoreAppointmentId))
             ->get(['starts_at', 'ends_at'])
             ->map(fn (Appointment $a) => [$a->starts_at, $a->ends_at]);
@@ -120,19 +155,5 @@ class SlotService
     private function overlapsAny(CarbonInterface $start, CarbonInterface $end, Collection $ranges): bool
     {
         return $ranges->contains(fn (array $range) => $range[0]->lt($end) && $range[1]->gt($start));
-    }
-
-    private function dayStart(CarbonInterface $date): Carbon
-    {
-        [$hour, $minute] = explode(':', config('appointments.working_hours.start'));
-
-        return Carbon::parse($date)->setTime((int) $hour, (int) $minute);
-    }
-
-    private function dayEnd(CarbonInterface $date): Carbon
-    {
-        [$hour, $minute] = explode(':', config('appointments.working_hours.end'));
-
-        return Carbon::parse($date)->setTime((int) $hour, (int) $minute);
     }
 }

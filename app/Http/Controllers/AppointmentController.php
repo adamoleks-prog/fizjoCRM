@@ -16,7 +16,7 @@ use App\Services\PatientComorbiditySync;
 use App\Services\SlotService;
 use App\Services\TherapyCycleResolver;
 use App\Services\TherapyMilestoneSync;
-use Carbon\CarbonInterface;
+use App\Services\WorkSchedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +29,7 @@ class AppointmentController extends Controller
     public function __construct(
         private readonly CollisionChecker $collisionChecker,
         private readonly SlotService $slots,
+        private readonly WorkSchedule $schedule,
         private readonly TherapyCycleResolver $therapyCycles,
         private readonly TherapyMilestoneSync $milestones,
         private readonly MeasurementSync $measurements,
@@ -36,29 +37,47 @@ class AppointmentController extends Controller
         private readonly PainPointSync $painPoints,
     ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $this->authorize('viewAny', Appointment::class);
 
-        return view('appointments.index');
+        $userId = $request->user()->id;
+        [$start, $end] = $this->schedule->weekBounds($userId);
+
+        // FullCalendar takes one entry per working period.
+        $businessHours = collect($this->schedule->pattern($userId))
+            ->flatMap(fn (array $periods, int $weekday) => collect($periods)->map(fn (array $p) => [
+                'daysOfWeek' => [$weekday % 7],
+                'startTime' => $p[0],
+                'endTime' => $p[1],
+            ]))
+            ->values();
+
+        return view('appointments.index', [
+            'calendarStart' => $start,
+            'calendarEnd' => $end,
+            'slotMinutes' => $this->slots->slotMinutes($userId),
+            'businessHours' => $businessHours,
+        ]);
     }
 
     public function create(Request $request): View
     {
         $this->authorize('create', Appointment::class);
 
-        $date = $request->date('date') ?? $this->nextWorkingDay();
         $operatorId = $request->user()->isAdmin()
             ? $request->integer('operator_id') ?: null
             : $request->user()->id;
+        $scheduleOf = $operatorId ?? $request->user()->id;
+        $date = $request->date('date') ?? $this->slots->nextWorkingDay($scheduleOf, now());
 
         return view('appointments.create', [
             'patients' => Patient::query()->orderBy('last_name')->get(),
             'selectedPatientId' => $request->integer('patient_id') ?: null,
             'date' => $date,
             'slots' => $operatorId ? $this->slots->daySlots($operatorId, $date) : collect(),
-            'isWorkingDay' => $this->slots->isWorkingDay($date),
-            'slotMinutes' => $this->slots->slotMinutes(),
+            'isWorkingDay' => $this->slots->isWorkingDay($scheduleOf, $date),
+            'slotMinutes' => $this->slots->slotMinutes($scheduleOf),
             'maxDuration' => config('appointments.max_duration_minutes'),
         ]);
     }
@@ -81,25 +100,15 @@ class AppointmentController extends Controller
                 'label' => $slot['starts_at']->format('H:i'),
                 'available' => $slot['available'],
                 'max_duration' => $slot['available']
-                    ? $this->slots->consecutiveFreeSlots($operatorId, $slot['starts_at']) * $this->slots->slotMinutes()
+                    ? $this->slots->consecutiveFreeSlots($operatorId, $slot['starts_at']) * $this->slots->slotMinutes($operatorId)
                     : 0,
             ]);
 
         return response()->json([
-            'working_day' => $this->slots->isWorkingDay($date),
+            'working_day' => $this->slots->isWorkingDay($operatorId, $date),
+            'slot_minutes' => $this->slots->slotMinutes($operatorId),
             'slots' => $slots,
         ]);
-    }
-
-    private function nextWorkingDay(): CarbonInterface
-    {
-        $date = now();
-
-        while (! $this->slots->isWorkingDay($date)) {
-            $date = $date->addDay();
-        }
-
-        return $date;
     }
 
     public function store(StoreAppointmentRequest $request): RedirectResponse
@@ -160,7 +169,7 @@ class AppointmentController extends Controller
             'therapyCycles' => $appointment->patient->therapyCycles()->latest()->get(),
             'measurementTemplates' => MeasurementTemplate::query()->orderBy('name')->get(),
             'slots' => $this->slots->daySlots($appointment->operator_id, $appointment->starts_at, $appointment->id),
-            'slotMinutes' => $this->slots->slotMinutes(),
+            'slotMinutes' => $this->slots->slotMinutes($appointment->operator_id),
             'maxDuration' => config('appointments.max_duration_minutes'),
         ]);
     }

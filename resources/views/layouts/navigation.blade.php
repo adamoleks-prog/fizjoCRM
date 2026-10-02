@@ -53,6 +53,10 @@
                             Profil
                         </x-dropdown-link>
 
+                        <x-dropdown-link :href="route('schedule.edit')">
+                            Czas pracy
+                        </x-dropdown-link>
+
                         <x-dropdown-link :href="route('google-calendar.edit')">
                             Kalendarz Google
                         </x-dropdown-link>
@@ -126,6 +130,10 @@
             <div class="mt-3 space-y-1">
                 <x-responsive-nav-link :href="route('profile.edit')">
                     Profil
+                </x-responsive-nav-link>
+
+                <x-responsive-nav-link :href="route('schedule.edit')">
+                    Czas pracy
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('google-calendar.edit')">

@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Patient;
 use App\Rules\SlotAligned;
 use App\Services\CollisionChecker;
+use App\Services\SlotService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,11 +23,15 @@ class StoreAppointmentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $slot = (int) config('appointments.slot_minutes');
+        // Before validation the patient may not exist yet — fall back to the caller,
+        // whose schedule is then checked; the patient error is reported anyway.
+        $operatorId = $this->patient()?->operator_id ?? $this->user()->id;
+        $slots = app(SlotService::class);
+        $slot = $slots->slotMinutes($operatorId);
 
         return [
             'patient_id' => ['required', 'integer', 'exists:patients,id'],
-            'starts_at' => ['required', 'date', app(SlotAligned::class)],
+            'starts_at' => ['required', 'date', new SlotAligned($slots, $operatorId)],
             'duration_minutes' => [
                 'required',
                 'integer',

@@ -16,6 +16,7 @@ export default function slotPicker(config) {
             const data = await response.json();
 
             this.workingDay = data.working_day;
+            this.slotMinutes = data.slot_minutes ?? this.slotMinutes;
             this.slots = data.slots;
             this.selected = null;
         },
@@ -38,8 +39,15 @@ export default function slotPicker(config) {
 
             const options = [];
 
+            const at = (slot) => new Date(slot.value.replace(' ', 'T')).getTime();
+
             for (let i = index; i < this.slots.length; i++) {
                 if (!this.slots[i].available) {
+                    break;
+                }
+
+                // A break in the working hours ends the run just like a booked slot.
+                if (i > index && at(this.slots[i]) - at(this.slots[i - 1]) !== this.slotMinutes * 60000) {
                     break;
                 }
 

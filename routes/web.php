@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TherapyCycleController;
 use App\Http\Controllers\VisitCardController;
+use App\Http\Controllers\WorkScheduleController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -91,6 +92,11 @@ Route::middleware('auth')->group(function () {
     Route::post('appointments/{appointment}/reminder', [AppointmentReminderController::class, 'store'])->name('appointments.reminder');
 
     Route::get('reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
+
+    Route::get('settings/schedule', [WorkScheduleController::class, 'edit'])->name('schedule.edit');
+    Route::put('settings/schedule', [WorkScheduleController::class, 'updatePattern'])->name('schedule.pattern');
+    Route::post('settings/schedule/day', [WorkScheduleController::class, 'saveDay'])->name('schedule.day');
+    Route::delete('settings/schedule/day', [WorkScheduleController::class, 'resetDay'])->name('schedule.day.reset');
 
     Route::get('settings/google-calendar', [GoogleCalendarController::class, 'edit'])->name('google-calendar.edit');
     Route::get('settings/google-calendar/redirect', [GoogleCalendarController::class, 'redirect'])->name('google-calendar.redirect');

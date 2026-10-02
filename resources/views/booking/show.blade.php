@@ -117,6 +117,13 @@
             </div>
 
             @if ($firstVisit)
+                <div>
+                    <label for="reason" class="text-sm font-medium">Z jakim problemem się zgłaszasz? <span class="text-gray-400">(opcjonalnie)</span></label>
+                    <textarea id="reason" name="reason" rows="4" maxlength="1000"
+                              placeholder="Np. ból kolana od miesiąca, nasila się przy schodzeniu ze schodów; skierowanie od ortopedy."
+                              class="{{ $input }}">{{ old('reason') }}</textarea>
+                    <p class="mt-1 text-xs text-gray-500">Kilka zdań wystarczy — pomoże fizjoterapeucie przygotować się do wizyty. Szczegóły omówicie na miejscu.</p>
+                </div>
                 <p class="text-xs text-gray-500">Pierwszą wizytę potwierdzi fizjoterapeuta — dostaniesz SMS.</p>
             @else
                 <p class="text-xs text-gray-500">Jeśli byłeś(-aś) już u nas, podaj numer telefonu i nazwisko takie, jak przy wcześniejszych wizytach — wtedy wizyta zostanie potwierdzona od razu. Nowe osoby potwierdzamy SMS-em.</p>

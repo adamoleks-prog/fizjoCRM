@@ -139,6 +139,12 @@
                             @endif
                         </dd>
                     </div>
+                    @if ($problem = $appointment->reportedProblem())
+                        <div class="md:col-span-2">
+                            <dt class="text-gray-500 dark:text-gray-400">Zgłoszony problem <span class="text-xs">(od pacjenta, z zapisu online)</span></dt>
+                            <dd class="whitespace-pre-line">{{ $problem }}</dd>
+                        </div>
+                    @endif
                     <div class="md:col-span-2">
                         <dt class="text-gray-500 dark:text-gray-400">Wywiad</dt>
                         <dd class="whitespace-pre-line">{{ $appointment->interview ?? '—' }}</dd>

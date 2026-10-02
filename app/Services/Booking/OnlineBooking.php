@@ -182,7 +182,7 @@ class OnlineBooking
     /**
      * Checks the request and sends the code. Returns the verification id.
      *
-     * @param  array{starts_at: string, service: Service, first_visit: bool, first_name: string, last_name: string, email: ?string, phone: string}  $data
+     * @param  array{starts_at: string, service: Service, first_visit: bool, first_name: string, last_name: string, email: ?string, phone: string, reason?: ?string}  $data
      */
     public function requestCode(User $physiotherapist, array $data, ?string $ip): int
     {
@@ -222,6 +222,7 @@ class OnlineBooking
                 'first_name' => self::properCase($data['first_name']),
                 'last_name' => self::properCase($data['last_name']),
                 'email' => $data['email'] ?: null,
+                'reason' => ($data['reason'] ?? null) ?: null,
             ]),
             'ip_address' => $ip,
             'expires_at' => now()->addMinutes(self::CODE_TTL_MINUTES),
@@ -320,6 +321,7 @@ class OnlineBooking
                 'first_name' => $payload['first_name'],
                 'last_name' => $payload['last_name'],
                 'email' => $payload['email'],
+                'reason' => $payload['reason'] ?? null,
             ];
             $appointment->save();
 

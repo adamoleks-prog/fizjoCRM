@@ -97,6 +97,13 @@
 
                         @include('appointments._icd10-picker', ['appointment' => $appointment])
 
+                        @if ($problem = $appointment->reportedProblem())
+                            <div class="rounded-md border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 p-3 text-sm text-gray-800 dark:text-gray-200">
+                                <div class="text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Pacjent napisał przy zapisie online</div>
+                                <div class="mt-1 whitespace-pre-line">{{ $problem }}</div>
+                            </div>
+                        @endif
+
                         <x-form-textarea name="interview" label="Wywiad" :value="$appointment->interview" :rows="5"
                                          hint="Ograniczenia w codziennych aktywnościach, czas trwania problemu, co nasila i co łagodzi objawy, cele pacjenta." />
 

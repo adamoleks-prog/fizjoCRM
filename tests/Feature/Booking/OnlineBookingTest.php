@@ -3,9 +3,11 @@
 use App\Enums\AppointmentStatus;
 use App\Models\Appointment;
 use App\Models\Patient;
+use App\Models\TherapyCycle;
 use App\Models\User;
 use App\Services\Booking\OnlineBooking;
 use App\Services\Messaging\AppSettings;
+use App\Services\TherapySuggestion\ClinicalCaseAssembler;
 use Carbon\Carbon;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -444,7 +446,7 @@ function bookFromOtherNumber(): Appointment
 }
 
 it('keeps what was typed in the form on the visit', function () {
-    expect(bookFromOtherNumber()->booking_details)->toBe(['first_name' => 'Jan', 'last_name' => 'Kowalski', 'email' => 'jan2@example.com']);
+    expect(bookFromOtherNumber()->booking_details)->toBe(['first_name' => 'Jan', 'last_name' => 'Kowalski', 'email' => 'jan2@example.com', 'reason' => null]);
 });
 
 it('confirms on the matched card and can update its phone', function () {
@@ -505,4 +507,47 @@ it('keeps the new-card action to the owning physiotherapist', function () {
         ->assertNotFound();
 
     expect(Patient::withoutGlobalScopes()->count())->toBe(1);
+});
+
+/* ---------- reported problem on a first visit ---------- */
+
+it('asks a first-visit patient about their problem, optionally', function () {
+    $this->get(route('booking.show', [$this->physio, 'typ' => 'pierwsza', 'data' => '2026-10-06', 'godzina' => '10:00']))
+        ->assertSee('Z jakim problemem się zgłaszasz?');
+
+    $this->get(route('booking.show', [$this->physio, 'typ' => 'kolejna', 'data' => '2026-10-06', 'godzina' => '10:00']))
+        ->assertDontSee('Z jakim problemem się zgłaszasz?');
+
+    // Optional: booking without it works.
+    ($this->book)(['typ' => 'pierwsza', 'last_name' => 'Nowa', 'phone' => '511222333'])->assertRedirect(route('booking.code'));
+});
+
+it('shows the reported problem to the physiotherapist and passes it to the assistant', function () {
+    ($this->book)(['typ' => 'pierwsza', 'first_name' => 'Ewa', 'last_name' => 'Nowa', 'phone' => '511222333', 'reason' => 'Ból kolana od miesiąca przy schodzeniu.']);
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    $appointment = Appointment::withoutGlobalScopes()->sole();
+
+    expect($appointment->reportedProblem())->toBe('Ból kolana od miesiąca przy schodzeniu.');
+
+    $this->actingAs($this->physio)->get(route('appointments.show', $appointment))->assertSee('Ból kolana od miesiąca przy schodzeniu.');
+    $this->actingAs($this->physio)->get(route('appointments.edit', $appointment))->assertSee('Pacjent napisał przy zapisie online');
+    $this->actingAs($this->physio)->get(route('dashboard'))->assertSee('Ból kolana od miesiąca');
+
+    // Not in any SMS.
+    Http::assertNotSent(fn (Request $r) => str_contains($r['message'] ?? '', 'kolana'));
+
+    $cycle = TherapyCycle::factory()->forPatient(Patient::withoutGlobalScopes()->find($appointment->patient_id))->create();
+    $appointment->forceFill(['therapy_cycle_id' => $cycle->id])->saveQuietly();
+
+    expect(app(ClinicalCaseAssembler::class)->assemble($cycle)->raw)
+        ->toContain('Zgłoszony problem (słowami pacjenta, z zapisu online):')
+        ->toContain('Ból kolana od miesiąca przy schodzeniu.');
+});
+
+it('ignores the problem field on a follow-up booking', function () {
+    ($this->book)(['reason' => 'nie powinno się zapisać']);
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    expect(Appointment::withoutGlobalScopes()->sole()->reportedProblem())->toBeNull();
 });

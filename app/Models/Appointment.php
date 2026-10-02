@@ -73,6 +73,14 @@ class Appointment extends Model
         return $this->belongsTo(Service::class);
     }
 
+    /** What the patient wrote about their problem when booking a first visit online. */
+    public function reportedProblem(): ?string
+    {
+        $reason = $this->booking_details['reason'] ?? null;
+
+        return filled($reason) ? $reason : null;
+    }
+
     /** Booked online from a number other than the one on the patient's card. */
     public function bookedFromOtherPhone(): bool
     {

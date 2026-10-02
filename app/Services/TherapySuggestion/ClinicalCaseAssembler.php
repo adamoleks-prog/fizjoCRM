@@ -146,7 +146,8 @@ class ClinicalCaseAssembler
             }
         }
 
-        return filled($visit->icd10_code) || $visit->measurements->isNotEmpty() || $visit->painPoints->isNotEmpty();
+        return filled($visit->icd10_code) || $visit->reportedProblem() !== null
+            || $visit->measurements->isNotEmpty() || $visit->painPoints->isNotEmpty();
     }
 
     private function visit(int $number, Appointment $visit): string
@@ -161,6 +162,10 @@ class ClinicalCaseAssembler
 
         if ($visit->icd10_code) {
             $lines[] = 'Rozpoznanie ICD-10: '.$visit->icd10_code.($visit->icd10Name() ? ' '.$visit->icd10Name() : '');
+        }
+
+        if ($problem = $visit->reportedProblem()) {
+            $lines[] = "Zgłoszony problem (słowami pacjenta, z zapisu online):\n".trim(str_replace(["\r\n", "\r"], "\n", $problem));
         }
 
         foreach (self::TEXT_FIELDS as $label => $field) {

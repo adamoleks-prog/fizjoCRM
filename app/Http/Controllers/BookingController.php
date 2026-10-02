@@ -83,6 +83,7 @@ class BookingController extends Controller
             'last_name' => ['required', 'string', 'max:60', 'regex:/^\p{L}+(-\p{L}+)?$/u'],
             'phone' => ['required', 'regex:/^[0-9]{9}$/'],
             'email' => ['nullable', 'email', 'max:255'],
+            'reason' => ['nullable', 'string', 'max:1000'],
             'consent' => ['accepted'],
         ], [
             'consent.accepted' => 'Zaznacz, że zapoznałeś(-aś) się z informacją o przetwarzaniu danych.',
@@ -107,6 +108,8 @@ class BookingController extends Controller
             'last_name' => $data['last_name'],
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'],
+            // Only a first physiotherapy visit asks for it.
+            'reason' => $type['first'] ? trim((string) ($data['reason'] ?? '')) : null,
         ], $request->ip());
 
         if (! $this->booking->requiresSmsCode()) {

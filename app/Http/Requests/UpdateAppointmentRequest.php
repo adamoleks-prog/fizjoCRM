@@ -51,6 +51,7 @@ class UpdateAppointmentRequest extends FormRequest
                 ...($moved || $durationChanged ? ['multiple_of:'.$slot] : []),
             ],
             'status' => ['required', new Enum(AppointmentStatus::class)],
+            'service_id' => ['nullable', 'integer', 'exists:services,id'],
             'icd10_code' => ['nullable', 'string', 'max:16', 'exists:icd10_codes,code'],
             'interview' => ['nullable', 'string', 'max:5000'],
             'examination' => ['nullable', 'string', 'max:5000'],

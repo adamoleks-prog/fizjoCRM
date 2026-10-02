@@ -99,6 +99,10 @@
                         </a></dd>
                     </div>
                     <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Rodzaj wizyty</dt>
+                        <dd>{{ $appointment->serviceName() }}{{ $appointment->source === 'online' ? ' · zapis online' : '' }}</dd>
+                    </div>
+                    <div>
                         <dt class="text-gray-500 dark:text-gray-400">Status</dt>
                         <dd>{{ $appointment->status->label() }}</dd>
                     </div>

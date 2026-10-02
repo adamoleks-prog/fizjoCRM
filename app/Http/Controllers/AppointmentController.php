@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateAppointmentRequest;
 use App\Models\Appointment;
 use App\Models\MeasurementTemplate;
 use App\Models\Patient;
+use App\Models\Service;
 use App\Services\CollisionChecker;
 use App\Services\MeasurementSync;
 use App\Services\Messaging\ReminderSender;
@@ -73,6 +74,8 @@ class AppointmentController extends Controller
 
         return view('appointments.create', [
             'patients' => Patient::query()->orderBy('last_name')->get(),
+            'services' => Service::active()->get(),
+            'defaultServiceId' => Service::default()?->id,
             'selectedPatientId' => $request->integer('patient_id') ?: null,
             'date' => $date,
             'slots' => $operatorId ? $this->slots->daySlots($operatorId, $date) : collect(),
@@ -129,6 +132,7 @@ class AppointmentController extends Controller
 
             $appointment = new Appointment([
                 'patient_id' => $request->integer('patient_id'),
+                'service_id' => $request->integer('service_id') ?: Service::default()?->id,
                 'starts_at' => $request->startsAt(),
                 'ends_at' => $request->endsAt(),
                 'status' => AppointmentStatus::Scheduled,
@@ -167,6 +171,9 @@ class AppointmentController extends Controller
                 'patient.comorbidities', 'therapyCycle.milestones', 'measurements.template', 'painPoints',
             ]),
             'therapyCycles' => $appointment->patient->therapyCycles()->latest()->get(),
+            // A switched-off service stays selectable on the visit that already has it.
+            'services' => Service::query()->where('active', true)->orWhere('id', $appointment->service_id)->orderBy('sort')->get(),
+            'defaultServiceId' => Service::default()?->id,
             'measurementTemplates' => MeasurementTemplate::query()->orderBy('name')->get(),
             'slots' => $this->slots->daySlots($appointment->operator_id, $appointment->starts_at, $appointment->id),
             'slotMinutes' => $this->slots->slotMinutes($appointment->operator_id),
@@ -252,13 +259,15 @@ class AppointmentController extends Controller
         $this->authorize('viewAny', Appointment::class);
 
         return Appointment::query()
-            ->with('patient')
+            ->with(['patient', 'service'])
             ->when($request->date('start'), fn ($query, $start) => $query->where('ends_at', '>=', $start))
             ->when($request->date('end'), fn ($query, $end) => $query->where('starts_at', '<=', $end))
             ->get()
             ->map(fn (Appointment $appointment) => [
                 'id' => $appointment->id,
-                'title' => ($appointment->status === AppointmentStatus::Pending ? '⏳ ' : '').$appointment->patient->last_name.' '.$appointment->patient->first_name,
+                'title' => ($appointment->status === AppointmentStatus::Pending ? '⏳ ' : '')
+                    .($appointment->service && ! $appointment->service->is_default ? $appointment->service->name.' · ' : '')
+                    .$appointment->patient->last_name.' '.$appointment->patient->first_name,
                 'start' => $appointment->starts_at->toIso8601String(),
                 'end' => $appointment->ends_at->toIso8601String(),
                 'url' => route('appointments.show', $appointment),

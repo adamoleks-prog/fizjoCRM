@@ -10,6 +10,7 @@ use App\Services\SlotService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreAppointmentRequest extends FormRequest
 {
@@ -31,6 +32,7 @@ class StoreAppointmentRequest extends FormRequest
 
         return [
             'patient_id' => ['required', 'integer', 'exists:patients,id'],
+            'service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('active', true)],
             'starts_at' => ['required', 'date', new SlotAligned($slots, $operatorId)],
             'duration_minutes' => [
                 'required',

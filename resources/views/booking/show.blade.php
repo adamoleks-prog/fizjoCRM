@@ -22,8 +22,11 @@
     {{-- 1. Visit type --}}
     <section class="bg-white rounded-lg shadow-sm p-5">
         <h2 class="font-semibold">1. Rodzaj wizyty</h2>
+        @if ($types === [])
+            <p class="mt-2 text-sm text-gray-600">Zapisy online są chwilowo niedostępne.</p>
+        @endif
         <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            @foreach (['kolejna' => ['Jestem już pacjentem', 'kontynuacja terapii'], 'pierwsza' => ['Pierwsza wizyta', 'wywiad, badanie i terapia']] as $value => [$label, $hint])
+            @foreach ($types as $value => ['label' => $label, 'hint' => $hint])
                 <a href="{{ $link(['typ' => $value]) }}"
                    @class(['rounded-md border p-4', 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' => $type === $value, 'border-gray-300 hover:border-indigo-400' => $type !== $value])>
                     <div class="font-medium">{{ $label }}</div>
@@ -103,10 +106,10 @@
                 </div>
             </div>
 
-            @if (! $firstVisit)
-                <p class="text-xs text-gray-500">Podaj numer telefonu i nazwisko takie, jak przy wcześniejszych wizytach — wtedy wizyta zostanie potwierdzona od razu.</p>
-            @else
+            @if ($firstVisit)
                 <p class="text-xs text-gray-500">Pierwszą wizytę potwierdzi fizjoterapeuta — dostaniesz SMS.</p>
+            @else
+                <p class="text-xs text-gray-500">Jeśli byłeś(-aś) już u nas, podaj numer telefonu i nazwisko takie, jak przy wcześniejszych wizytach — wtedy wizyta zostanie potwierdzona od razu. Nowe osoby potwierdzamy SMS-em.</p>
             @endif
 
             <details class="text-sm text-gray-600">

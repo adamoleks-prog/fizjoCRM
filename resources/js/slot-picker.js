@@ -7,6 +7,7 @@ export default function slotPicker(config) {
         maxDuration: config.maxDuration,
         selected: config.selected,
         duration: config.duration,
+        serviceDuration: config.serviceDuration ?? null,
 
         async loadSlots() {
             const url = new URL(config.slotsUrl, window.location.origin);
@@ -23,7 +24,20 @@ export default function slotPicker(config) {
 
         select(slot) {
             this.selected = slot.value;
-            this.duration = this.slotMinutes;
+            this.duration = this.preferredDuration();
+        },
+
+        /** The chosen kind of visit's length, or the longest that still fits. */
+        preferredDuration() {
+            const options = this.durationOptions();
+
+            if (!this.serviceDuration) {
+                return options[0];
+            }
+
+            const fitting = options.filter((minutes) => minutes <= this.serviceDuration);
+
+            return fitting.length ? fitting[fitting.length - 1] : options[0];
         },
 
         /**

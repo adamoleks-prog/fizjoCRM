@@ -6,6 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Scopes\OperatorScope;
+use App\Models\Service;
 use App\Models\User;
 use App\Services\CollisionChecker;
 use App\Services\Messaging\AppSettings;
@@ -72,6 +73,44 @@ class OnlineBooking
         return $physiotherapist->online_booking_enabled && ($this->sms->isConfigured() || $this->isTestMode());
     }
 
+    /**
+     * What a patient can choose on the public page: physiotherapy (follow-up or
+     * first visit, with the physiotherapist's own lengths) and every other kind
+     * of visit the admin made bookable online.
+     *
+     * @return array<string, array{label: string, hint: string, service: Service, first: bool}>
+     */
+    public function visitTypes(): array
+    {
+        $types = [];
+        $default = Service::default();
+
+        if ($default && $default->online_bookable) {
+            $types['kolejna'] = ['label' => 'Jestem już pacjentem', 'hint' => $default->name.' — kontynuacja terapii', 'service' => $default, 'first' => false];
+            $types['pierwsza'] = ['label' => 'Pierwsza wizyta', 'hint' => $default->name.' — wywiad, badanie i terapia', 'service' => $default, 'first' => true];
+        }
+
+        foreach (Service::active()->where('online_bookable', true)->where('is_default', false)->get() as $service) {
+            $types['u'.$service->id] = ['label' => $service->name, 'hint' => $service->duration_minutes.' min', 'service' => $service, 'first' => false];
+        }
+
+        return $types;
+    }
+
+    /**
+     * Length of the visit, rounded up to whole slots of this physiotherapist.
+     */
+    public function minutesFor(User $physiotherapist, Service $service, bool $firstVisit): int
+    {
+        if ($service->is_default) {
+            return $this->visitMinutes($physiotherapist, $firstVisit);
+        }
+
+        $slot = $this->slots->slotMinutes($physiotherapist->id);
+
+        return (int) ceil($service->duration_minutes / $slot) * $slot;
+    }
+
     public function visitMinutes(User $physiotherapist, bool $firstVisit): int
     {
         $slot = $this->slots->slotMinutes($physiotherapist->id);
@@ -131,7 +170,7 @@ class OnlineBooking
     /**
      * Checks the request and sends the code. Returns the verification id.
      *
-     * @param  array{starts_at: string, first_visit: bool, first_name: string, last_name: string, email: ?string, phone: string}  $data
+     * @param  array{starts_at: string, service: Service, first_visit: bool, first_name: string, last_name: string, email: ?string, phone: string}  $data
      */
     public function requestCode(User $physiotherapist, array $data, ?string $ip): int
     {
@@ -141,7 +180,7 @@ class OnlineBooking
             throw ValidationException::withMessages(['phone' => 'Podaj poprawny numer telefonu komórkowego.']);
         }
 
-        $minutes = $this->visitMinutes($physiotherapist, $data['first_visit']);
+        $minutes = $this->minutesFor($physiotherapist, $data['service'], $data['first_visit']);
         $start = Carbon::parse($data['starts_at']);
         $this->ensureStillFree($physiotherapist, $start, $minutes);
 
@@ -166,6 +205,7 @@ class OnlineBooking
                 'operator_id' => $physiotherapist->id,
                 'starts_at' => $start->format('Y-m-d H:i:s'),
                 'minutes' => $minutes,
+                'service_id' => $data['service']->id,
                 'first_visit' => $data['first_visit'],
                 'first_name' => trim($data['first_name']),
                 'last_name' => trim($data['last_name']),
@@ -243,6 +283,7 @@ class OnlineBooking
 
             $appointment = new Appointment([
                 'patient_id' => $patient->id,
+                'service_id' => $payload['service_id'] ?? Service::default()?->id,
                 'starts_at' => $start,
                 'ends_at' => $end,
                 'status' => $known ? AppointmentStatus::Scheduled : AppointmentStatus::Pending,

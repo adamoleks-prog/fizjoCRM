@@ -9,6 +9,7 @@ use App\Services\Booking\OnlineBooking;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -36,9 +37,10 @@ class BookingController extends Controller
     {
         abort_unless($this->booking->isOpen($physiotherapist), 404);
 
-        $type = $request->query('typ');
-        $firstVisit = $type === 'pierwsza';
-        $minutes = $type ? $this->booking->visitMinutes($physiotherapist, $firstVisit) : null;
+        $types = $this->booking->visitTypes();
+        $type = array_key_exists((string) $request->query('typ'), $types) ? $request->query('typ') : null;
+        $firstVisit = $type ? $types[$type]['first'] : false;
+        $minutes = $type ? $this->booking->minutesFor($physiotherapist, $types[$type]['service'], $firstVisit) : null;
 
         $days = $minutes ? $this->booking->freeDays($physiotherapist, $minutes) : collect();
         $date = $request->filled('data') ? Carbon::parse($request->query('data'))->startOfDay() : $days->first();
@@ -47,6 +49,7 @@ class BookingController extends Controller
 
         return view('booking.show', [
             'physiotherapist' => $physiotherapist,
+            'types' => $types,
             'type' => $type,
             'firstVisit' => $firstVisit,
             'minutes' => $minutes,
@@ -68,7 +71,7 @@ class BookingController extends Controller
         }
 
         $data = $request->validate([
-            'typ' => ['required', 'in:pierwsza,kolejna'],
+            'typ' => ['required', 'string', Rule::in(array_keys($this->booking->visitTypes()))],
             'starts_at' => ['required', 'date_format:Y-m-d H:i'],
             'first_name' => ['required', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
@@ -79,9 +82,12 @@ class BookingController extends Controller
             'consent.accepted' => 'Zaznacz, że zapoznałeś(-aś) się z informacją o przetwarzaniu danych.',
         ]);
 
+        $type = $this->booking->visitTypes()[$data['typ']];
+
         $id = $this->booking->requestCode($physiotherapist, [
             'starts_at' => $data['starts_at'],
-            'first_visit' => $data['typ'] === 'pierwsza',
+            'service' => $type['service'],
+            'first_visit' => $type['first'],
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'email' => $data['email'] ?? null,

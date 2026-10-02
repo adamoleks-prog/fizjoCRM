@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ScopedBy([OperatorScope::class])]
 #[Fillable([
     'patient_id',
+    'service_id',
     'starts_at',
     'ends_at',
     'status',
@@ -60,6 +61,20 @@ class Appointment extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    /**
+     * @return BelongsTo<Service, $this>
+     */
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
+    }
+
+    /** Visits from before services existed count as the default (physiotherapy). */
+    public function serviceName(): string
+    {
+        return $this->service?->name ?? Service::default()?->name ?? 'Wizyta';
     }
 
     /**

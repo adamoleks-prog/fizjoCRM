@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\MessagingSettingsController;
+use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\AiClinicalCaseController;
 use App\Http\Controllers\AiRecommendationController;
 use App\Http\Controllers\AppointmentController;
@@ -88,6 +89,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('recommendations/{recommendation}/decision', [AiRecommendationController::class, 'decide'])->name('recommendations.decide');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('services', [ServiceController::class, 'index'])->name('services.index');
+        Route::post('services', [ServiceController::class, 'store'])->name('services.store');
+        Route::put('services/{service}', [ServiceController::class, 'update'])->name('services.update');
         Route::get('messaging', [MessagingSettingsController::class, 'edit'])->name('messaging.edit');
         Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('messaging.update');
         Route::post('messaging/test-email', [MessagingSettingsController::class, 'testEmail'])->name('messaging.test-email');

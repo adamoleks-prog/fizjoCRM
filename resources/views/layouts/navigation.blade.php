@@ -70,6 +70,9 @@
                         </x-dropdown-link>
 
                         @if (Auth::user()->isAdmin())
+                            <x-dropdown-link :href="route('admin.services.index')">
+                                Rodzaje wizyt
+                            </x-dropdown-link>
                             <x-dropdown-link :href="route('admin.messaging.edit')">
                                 Ustawienia wysyłki
                             </x-dropdown-link>
@@ -153,6 +156,9 @@
                 </x-responsive-nav-link>
 
                 @if (Auth::user()->isAdmin())
+                    <x-responsive-nav-link :href="route('admin.services.index')">
+                        Rodzaje wizyt
+                    </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.messaging.edit')">
                         Ustawienia wysyłki
                     </x-responsive-nav-link>

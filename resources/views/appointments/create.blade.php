@@ -20,6 +20,7 @@
                           selected: @js(old('starts_at')),
                           duration: @js((int) old('duration_minutes', $slotMinutes)),
                           slotsUrl: @js(route('appointments.slots')),
+                          serviceDuration: @js($services->firstWhere('id', (int) old('service_id', $defaultServiceId))?->duration_minutes),
                       })">
                     @csrf
 
@@ -36,6 +37,17 @@
                                 @endforeach
                             </select>
                             <x-input-error :messages="$errors->get('patient_id')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="service_id" value="Rodzaj wizyty" />
+                            <select id="service_id" name="service_id" @change="serviceDuration = Number($event.target.selectedOptions[0].dataset.duration)"
+                                    class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm">
+                                @foreach ($services as $service)
+                                    <option value="{{ $service->id }}" data-duration="{{ $service->duration_minutes }}" @selected((int) old('service_id', $defaultServiceId) === $service->id)>{{ $service->name }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('service_id')" class="mt-2" />
                         </div>
 
                         <div>

@@ -148,3 +148,13 @@ it('shows the schedule page with the next weeks', function () {
         ->assertSee('Standardowy tydzień')
         ->assertSee('12.10.2026');
 });
+
+it('renders the calendar page with the physiotherapist working hours', function () {
+    ($this->savePattern)();
+
+    $this->actingAs($this->operator)
+        ->get(route('appointments.index'))
+        ->assertOk()
+        ->assertSee('"00:45:00"', false)
+        ->assertSee('"startTime":"14:00"', false);
+});

@@ -56,7 +56,7 @@ class AppointmentController extends Controller
         return view('appointments.index', [
             'calendarStart' => $start,
             'calendarEnd' => $end,
-            'slotMinutes' => $this->slots->slotMinutes($userId),
+            'slotDuration' => gmdate('H:i:s', $this->slots->slotMinutes($userId) * 60),
             'businessHours' => $businessHours,
         ]);
     }

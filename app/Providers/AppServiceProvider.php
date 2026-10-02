@@ -11,6 +11,9 @@ use App\Services\Messaging\SmsGateway;
 use App\Services\TherapySuggestion\OpenRouterClient;
 use App\Services\TherapySuggestion\SuggestionProvider;
 use App\Services\WorkSchedule;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +34,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        // Public booking pages. Named limiters keep separate counters — the
+        // anonymous "throttle:N,1" form shares one counter per IP across routes.
+        RateLimiter::for('booking', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+        RateLimiter::for('booking-submit', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
     }
 }

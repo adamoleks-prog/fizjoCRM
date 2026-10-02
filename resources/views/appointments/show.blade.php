@@ -27,6 +27,13 @@
                 </div>
             @endif
 
+            @if ($appointment->status === \App\Enums\AppointmentStatus::Pending)
+                <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg flex flex-wrap items-center justify-between gap-3 text-sm text-gray-900 dark:text-gray-100">
+                    <span><strong>Nowy pacjent z zapisów online.</strong> Termin jest zarezerwowany — potwierdź go albo odrzuć. Pacjent dostanie SMS.</span>
+                    @include('booking._decision', ['appointment' => $appointment])
+                </div>
+            @endif
+
             @if ($errors->has('visit_card'))
                 <div class="p-4 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-lg">
                     {{ $errors->first('visit_card') }}

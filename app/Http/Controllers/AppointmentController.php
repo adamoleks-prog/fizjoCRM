@@ -258,7 +258,7 @@ class AppointmentController extends Controller
             ->get()
             ->map(fn (Appointment $appointment) => [
                 'id' => $appointment->id,
-                'title' => $appointment->patient->last_name.' '.$appointment->patient->first_name,
+                'title' => ($appointment->status === AppointmentStatus::Pending ? '⏳ ' : '').$appointment->patient->last_name.' '.$appointment->patient->first_name,
                 'start' => $appointment->starts_at->toIso8601String(),
                 'end' => $appointment->ends_at->toIso8601String(),
                 'url' => route('appointments.show', $appointment),

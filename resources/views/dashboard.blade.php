@@ -20,6 +20,20 @@
                 </div>
             </div>
 
+            @if ($pendingBookings->isNotEmpty())
+                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
+                    <h3 class="font-semibold mb-3">Nowi pacjenci z zapisów online — do potwierdzenia ({{ $pendingBookings->count() }})</h3>
+                    @foreach ($pendingBookings as $appointment)
+                        <div class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm border-b border-amber-200 dark:border-amber-800 last:border-0">
+                            <a href="{{ route('appointments.show', $appointment) }}" class="hover:underline">
+                                <strong>{{ $appointment->starts_at->format('d.m H:i') }}</strong> — {{ $appointment->patient->last_name }} {{ $appointment->patient->first_name }}, tel. {{ $appointment->patient->phone }}
+                            </a>
+                            @include('booking._decision', ['appointment' => $appointment])
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
                 <h3 class="font-semibold mb-4">Dzisiejszy harmonogram</h3>
 

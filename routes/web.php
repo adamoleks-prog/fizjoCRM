@@ -6,6 +6,8 @@ use App\Http\Controllers\AiRecommendationController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AppointmentReminderController;
 use App\Http\Controllers\Auth\GoogleCalendarController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookingSettingsController;
 use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\ConsentTemplateController;
 use App\Http\Controllers\DashboardController;
@@ -26,6 +28,18 @@ Route::get('/', function () {
     return Auth::check()
         ? redirect()->route('dashboard')
         : redirect()->route('login');
+});
+
+// Public online booking — no login; every step throttled.
+Route::middleware('throttle:booking')->prefix('zapisy')->name('booking.')->group(function () {
+    Route::get('/', [BookingController::class, 'index'])->name('index');
+    Route::get('kod', [BookingController::class, 'code'])->name('code');
+    Route::post('kod', [BookingController::class, 'confirm'])->middleware('throttle:booking-submit')->name('confirm');
+    Route::get('gotowe', [BookingController::class, 'done'])->name('done');
+    Route::get('odwolaj/{token}', [BookingController::class, 'cancelForm'])->name('cancel');
+    Route::post('odwolaj/{token}', [BookingController::class, 'cancel'])->name('cancel.confirm');
+    Route::get('{physiotherapist}', [BookingController::class, 'show'])->whereNumber('physiotherapist')->name('show');
+    Route::post('{physiotherapist}', [BookingController::class, 'requestCode'])->whereNumber('physiotherapist')->middleware('throttle:booking-submit')->name('request');
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware('auth')->name('dashboard');
@@ -92,6 +106,11 @@ Route::middleware('auth')->group(function () {
     Route::post('appointments/{appointment}/reminder', [AppointmentReminderController::class, 'store'])->name('appointments.reminder');
 
     Route::get('reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
+
+    Route::get('settings/booking', [BookingSettingsController::class, 'edit'])->name('booking.settings');
+    Route::put('settings/booking', [BookingSettingsController::class, 'update'])->name('booking.settings.update');
+    Route::post('appointments/{appointment}/approve', [BookingSettingsController::class, 'approve'])->name('booking.approve');
+    Route::post('appointments/{appointment}/reject', [BookingSettingsController::class, 'reject'])->name('booking.reject');
 
     Route::get('settings/schedule', [WorkScheduleController::class, 'edit'])->name('schedule.edit');
     Route::put('settings/schedule', [WorkScheduleController::class, 'updatePattern'])->name('schedule.pattern');

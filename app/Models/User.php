@@ -13,7 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'competency_profile', 'practice_name', 'practice_address', 'practice_phone'])]
+#[Fillable(['name', 'email', 'password', 'role', 'competency_profile', 'practice_name', 'practice_address', 'practice_phone',
+    'online_booking_enabled', 'booking_visit_minutes', 'booking_first_visit_minutes',
+    'booking_min_notice_hours', 'booking_days_ahead', 'booking_cancel_hours'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,6 +34,7 @@ class User extends Authenticatable
             'google_calendar_connected_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'online_booking_enabled' => 'boolean',
         ];
     }
 

@@ -24,6 +24,12 @@ class DashboardController extends Controller
                 ->where('status', AppointmentStatus::Scheduled)
                 ->count(),
             'patientCount' => Patient::count(),
+            'pendingBookings' => Appointment::query()
+                ->with('patient')
+                ->where('status', AppointmentStatus::Pending)
+                ->where('starts_at', '>', now())
+                ->orderBy('starts_at')
+                ->get(),
         ]);
     }
 }

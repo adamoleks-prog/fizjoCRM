@@ -8,6 +8,7 @@ enum AppointmentStatus: string
     case Completed = 'completed';
     case Cancelled = 'cancelled';
     case NoShow = 'no_show';
+    case Pending = 'pending';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum AppointmentStatus: string
             self::Completed => 'Odbyta',
             self::Cancelled => 'Odwołana',
             self::NoShow => 'Nieobecność',
+            self::Pending => 'Do potwierdzenia',
         };
     }
 }

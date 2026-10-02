@@ -57,6 +57,10 @@
                             Czas pracy
                         </x-dropdown-link>
 
+                        <x-dropdown-link :href="route('booking.settings')">
+                            Zapisy online
+                        </x-dropdown-link>
+
                         <x-dropdown-link :href="route('google-calendar.edit')">
                             Kalendarz Google
                         </x-dropdown-link>
@@ -134,6 +138,10 @@
 
                 <x-responsive-nav-link :href="route('schedule.edit')">
                     Czas pracy
+                </x-responsive-nav-link>
+
+                <x-responsive-nav-link :href="route('booking.settings')">
+                    Zapisy online
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('google-calendar.edit')">

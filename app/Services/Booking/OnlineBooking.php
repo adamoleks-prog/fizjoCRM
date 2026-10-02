@@ -46,6 +46,7 @@ class OnlineBooking
         private readonly CollisionChecker $collisions,
         private readonly SmsGateway $sms,
         private readonly AppSettings $settings,
+        private readonly PatientMatcher $matcher,
     ) {}
 
     /** When test mode ends, or null when it is off (or has run out). */
@@ -218,8 +219,8 @@ class OnlineBooking
                 'minutes' => $minutes,
                 'service_id' => $data['service']->id,
                 'first_visit' => $data['first_visit'],
-                'first_name' => trim($data['first_name']),
-                'last_name' => trim($data['last_name']),
+                'first_name' => self::properCase($data['first_name']),
+                'last_name' => self::properCase($data['last_name']),
                 'email' => $data['email'] ?: null,
             ]),
             'ip_address' => $ip,
@@ -286,14 +287,15 @@ class OnlineBooking
                 throw ValidationException::withMessages(['code' => 'Ktoś właśnie zajął ten termin. Wybierz inny.']);
             }
 
-            $patient = $this->findPatient($physiotherapist, $verification->phone, $payload['last_name']);
-            $known = $patient !== null;
+            ['patient' => $patient, 'phoneMatches' => $known] = $this->matcher->find(
+                $physiotherapist, $verification->phone, $payload['first_name'], $payload['last_name'],
+            );
 
             if (! $patient) {
                 $patient = new Patient([
                     'first_name' => $payload['first_name'],
                     'last_name' => $payload['last_name'],
-                    'phone' => $verification->phone,
+                    'phone' => PhoneNumber::format($verification->phone),
                     'email' => $payload['email'],
                     'reminders_enabled' => true,
                 ]);
@@ -313,6 +315,7 @@ class OnlineBooking
             $appointment->operator_id = $physiotherapist->id;
             $appointment->source = 'online';
             $appointment->cancel_token = Str::random(40);
+            $appointment->booking_phone = $verification->phone;
             $appointment->save();
 
             return $appointment;
@@ -370,7 +373,8 @@ class OnlineBooking
     /** Best effort — the booking stands even if the confirmation SMS fails. */
     private function text(Appointment $appointment, string $message): void
     {
-        $phone = Patient::withoutGlobalScope(OperatorScope::class)->whereKey($appointment->patient_id)->value('phone');
+        $phone = $appointment->booking_phone
+            ?? Patient::withoutGlobalScope(OperatorScope::class)->whereKey($appointment->patient_id)->value('phone');
 
         try {
             if ($phone) {
@@ -390,23 +394,22 @@ class OnlineBooking
         }
     }
 
-    /**
-     * Same phone and surname on this physiotherapist's list. A phone alone is not
-     * enough: family members often share one, and the visit must land on the
-     * right card.
-     */
-    private function findPatient(User $physiotherapist, string $phone, string $lastName): ?Patient
+    /** "jAN" and "jan" are stored as "Jan", "nowak-kowalska" as "Nowak-Kowalska". */
+    public static function properCase(string $name): string
     {
-        return $this->patientsWithPhone($physiotherapist, $phone)
-            ->first(fn (Patient $p) => mb_strtolower(trim($p->last_name)) === mb_strtolower(trim($lastName)));
+        return implode('-', array_map(
+            fn (string $part) => mb_convert_case(mb_strtolower($part), MB_CASE_TITLE),
+            explode('-', trim($name)),
+        ));
     }
 
     private function hasOpenOnlineBooking(User $physiotherapist, string $phone): bool
     {
         $ids = $this->patientsWithPhone($physiotherapist, $phone)->pluck('id');
 
-        return $ids->isNotEmpty() && Appointment::withoutGlobalScopes()
-            ->whereIn('patient_id', $ids)
+        return Appointment::withoutGlobalScopes()
+            ->where('operator_id', $physiotherapist->id)
+            ->where(fn ($q) => $q->whereIn('patient_id', $ids)->orWhere('booking_phone', $phone))
             ->where('source', 'online')
             ->whereIn('status', [AppointmentStatus::Scheduled, AppointmentStatus::Pending])
             ->where('starts_at', '>', now())

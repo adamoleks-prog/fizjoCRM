@@ -92,15 +92,23 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label for="first_name" class="text-sm font-medium">Imię</label>
-                    <input id="first_name" name="first_name" value="{{ old('first_name') }}" required autocomplete="given-name" class="{{ $input }}">
+                    <input id="first_name" name="first_name" value="{{ old('first_name') }}" required maxlength="40" autocomplete="given-name"
+                           pattern="[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+" title="Tylko litery" class="{{ $input }}">
                 </div>
                 <div>
                     <label for="last_name" class="text-sm font-medium">Nazwisko</label>
-                    <input id="last_name" name="last_name" value="{{ old('last_name') }}" required autocomplete="family-name" class="{{ $input }}">
+                    <input id="last_name" name="last_name" value="{{ old('last_name') }}" required maxlength="60" autocomplete="family-name"
+                           pattern="[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+(-[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+)?" title="Tylko litery; nazwisko dwuczłonowe połącz myślnikiem" class="{{ $input }}">
                 </div>
                 <div>
                     <label for="phone" class="text-sm font-medium">Telefon komórkowy</label>
-                    <input id="phone" name="phone" type="tel" value="{{ old('phone') }}" required autocomplete="tel" class="{{ $input }}">
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-600 select-none">+48</span>
+                        <input id="phone" name="phone" type="tel" inputmode="numeric" value="{{ old('phone') }}" required
+                               maxlength="9" pattern="[0-9]{9}" title="9 cyfr numeru komórkowego" autocomplete="tel-national" placeholder="600123456"
+                               oninput="this.value = this.value.replace(/\D/g, '').slice(0, 9)"
+                               class="block w-full rounded-none rounded-r-md border-gray-300 focus:border-indigo-500">
+                    </div>
                 </div>
                 <div>
                     <label for="email" class="text-sm font-medium">E-mail <span class="text-gray-400">(opcjonalnie)</span></label>

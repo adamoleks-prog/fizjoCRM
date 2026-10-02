@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AppointmentStatus;
 use App\Models\Scopes\OperatorScope;
 use App\Observers\AppointmentObserver;
+use App\Services\Messaging\PhoneNumber;
 use Database\Factories\AppointmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -69,6 +70,13 @@ class Appointment extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    /** Booked online from a number other than the one on the patient's card. */
+    public function bookedFromOtherPhone(): bool
+    {
+        return $this->booking_phone !== null
+            && PhoneNumber::normalize($this->patient?->phone) !== $this->booking_phone;
     }
 
     /** Visits from before services existed count as the default (physiotherapy). */

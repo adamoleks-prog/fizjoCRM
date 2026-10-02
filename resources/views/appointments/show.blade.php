@@ -29,7 +29,13 @@
 
             @if ($appointment->status === \App\Enums\AppointmentStatus::Pending)
                 <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg flex flex-wrap items-center justify-between gap-3 text-sm text-gray-900 dark:text-gray-100">
-                    <span><strong>Nowy pacjent z zapisów online.</strong> Termin jest zarezerwowany — potwierdź go albo odrzuć. Pacjent dostanie SMS.</span>
+                    <span>
+                        @if ($appointment->bookedFromOtherPhone())
+                            <strong>Zapis online pasujący do tego pacjenta, ale z innego numeru ({{ \App\Services\Messaging\PhoneNumber::format($appointment->booking_phone) }}).</strong> Sprawdź, czy to ta sama osoba — potwierdź albo odrzuć. SMS pójdzie na numer podany przy zapisie.
+                        @else
+                            <strong>Nowy pacjent z zapisów online.</strong> Termin jest zarezerwowany — potwierdź go albo odrzuć. Pacjent dostanie SMS.
+                        @endif
+                    </span>
                     @include('booking._decision', ['appointment' => $appointment])
                 </div>
             @endif

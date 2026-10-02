@@ -27,6 +27,9 @@
                         <div class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm border-b border-amber-200 dark:border-amber-800 last:border-0">
                             <a href="{{ route('appointments.show', $appointment) }}" class="hover:underline">
                                 <strong>{{ $appointment->starts_at->format('d.m H:i') }}</strong> — {{ $appointment->patient->last_name }} {{ $appointment->patient->first_name }}, tel. {{ $appointment->patient->phone }}
+                                @if ($appointment->bookedFromOtherPhone())
+                                    <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">zapis z innego numeru: {{ \App\Services\Messaging\PhoneNumber::format($appointment->booking_phone) }}</span>
+                                @endif
                             </a>
                             @include('booking._decision', ['appointment' => $appointment])
                         </div>

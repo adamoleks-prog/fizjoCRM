@@ -51,7 +51,7 @@ beforeEach(function () {
             'starts_at' => '2026-10-06 10:00',
             'first_name' => 'Jan',
             'last_name' => 'Kowalski',
-            'phone' => '+48 602-118-940',
+            'phone' => '602118940',
             'consent' => 1,
         ], $overrides));
     };
@@ -91,7 +91,7 @@ it('books an existing patient straight away after the SMS code', function () {
 });
 
 it('creates a new patient and waits for approval on a first visit', function () {
-    ($this->book)(['typ' => 'pierwsza', 'first_name' => 'Ewa', 'last_name' => 'Nowa', 'phone' => '511 222 333', 'email' => 'ewa@example.com']);
+    ($this->book)(['typ' => 'pierwsza', 'first_name' => 'Ewa', 'last_name' => 'Nowa', 'phone' => '511222333', 'email' => 'ewa@example.com']);
     $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
 
     $appointment = Appointment::withoutGlobalScopes()->sole();
@@ -215,7 +215,7 @@ it('lets the physiotherapist set up booking and see pending visits', function ()
 });
 
 it('keeps approval to the physiotherapist who owns the visit', function () {
-    ($this->book)(['typ' => 'pierwsza', 'last_name' => 'Nowa', 'phone' => '511 222 333']);
+    ($this->book)(['typ' => 'pierwsza', 'last_name' => 'Nowa', 'phone' => '511222333']);
     $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
     $appointment = Appointment::withoutGlobalScopes()->sole();
 
@@ -299,7 +299,7 @@ it('books straight away when the SMS code is switched off', function () {
         ->status->toBe(AppointmentStatus::Scheduled);
 
     // A new person still waits for the physiotherapist.
-    ($this->book)(['typ' => 'pierwsza', 'starts_at' => '2026-10-07 10:00', 'last_name' => 'Nowa', 'phone' => '511 222 333'])
+    ($this->book)(['typ' => 'pierwsza', 'starts_at' => '2026-10-07 10:00', 'last_name' => 'Nowa', 'phone' => '511222333'])
         ->assertRedirect(route('booking.done'));
     expect(Appointment::withoutGlobalScopes()->latest('id')->first()->status)->toBe(AppointmentStatus::Pending);
 
@@ -350,4 +350,85 @@ it('stores the reCAPTCHA secret encrypted and never shows it', function () {
     $this->actingAs(User::factory()->admin()->create())->get(route('admin.messaging.edit'))
         ->assertDontSee('very-secret-value')
         ->assertSee('zapisany');
+});
+
+/* ---------- matching existing patients, field validation ---------- */
+
+it('recognises a patient despite typos and missing Polish characters', function () {
+    $this->existing->update(['first_name' => 'Łukasz', 'last_name' => 'Wójcik']);
+
+    ($this->book)(['first_name' => 'lukasz', 'last_name' => 'Wojcki']);   // no diacritics + swapped letters
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    expect(Appointment::withoutGlobalScopes()->sole())
+        ->patient_id->toBe($this->existing->id)
+        ->status->toBe(AppointmentStatus::Scheduled);
+});
+
+it('attaches a booking from a new number to the existing card, waiting for approval', function () {
+    ($this->book)(['phone' => '699888777']);
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    $appointment = Appointment::withoutGlobalScopes()->sole();
+
+    expect($appointment->patient_id)->toBe($this->existing->id)
+        ->and($appointment->status)->toBe(AppointmentStatus::Pending)
+        ->and($appointment->booking_phone)->toBe('48699888777')
+        ->and(Patient::withoutGlobalScopes()->count())->toBe(1);   // no duplicate card
+
+    expect($appointment->load('patient')->bookedFromOtherPhone())->toBeTrue();
+
+    // Texts about this booking go to the number given when booking.
+    Http::assertSent(fn (Request $r) => ($r['to'] ?? null) === '48699888777' && str_contains($r['message'] ?? '', 'Otrzymalismy prosbe'));
+
+    $this->actingAs($this->physio)->get(route('appointments.show', $appointment))->assertSee('z innego numeru');
+});
+
+it('does not guess between two patients with the same name and another number', function () {
+    Patient::factory()->forOperator($this->physio)->create(['first_name' => 'Jan', 'last_name' => 'Kowalski', 'phone' => '501501501']);
+
+    ($this->book)(['phone' => '699888777']);
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    $appointment = Appointment::withoutGlobalScopes()->sole();
+
+    expect($appointment->status)->toBe(AppointmentStatus::Pending)
+        ->and(Patient::withoutGlobalScopes()->count())->toBe(3);   // a new card to check
+});
+
+it('does not merge clearly different names', function () {
+    ($this->book)(['first_name' => 'Janina', 'last_name' => 'Kowalczyk', 'phone' => '699888777']);
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    expect(Appointment::withoutGlobalScopes()->sole()->patient_id)->not->toBe($this->existing->id);
+});
+
+it('validates names and the phone number', function (array $fields, string $error) {
+    ($this->book)($fields)->assertSessionHasErrors($error);
+    Http::assertNothingSent();
+})->with([
+    'digit in first name' => [['first_name' => 'Jan2'], 'first_name'],
+    'space in first name' => [['first_name' => 'Jan Paweł'], 'first_name'],
+    'special char in surname' => [['last_name' => 'Kowalski!'], 'last_name'],
+    'space in surname' => [['last_name' => 'Nowak Kowalska'], 'last_name'],
+    'phone with +48' => [['phone' => '+48602118940'], 'phone'],
+    'phone too short' => [['phone' => '60211894'], 'phone'],
+    'phone with spaces' => [['phone' => '602 118 940'], 'phone'],
+]);
+
+it('accepts Polish letters and a double-barrelled surname, storing them capitalised', function () {
+    ($this->book)(['typ' => 'pierwsza', 'first_name' => 'żaneta', 'last_name' => 'nowak-kowalska', 'phone' => '511222333']);
+    $this->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    $patient = Patient::withoutGlobalScopes()->latest('id')->first();
+
+    expect($patient->first_name)->toBe('Żaneta')
+        ->and($patient->last_name)->toBe('Nowak-Kowalska')
+        ->and($patient->phone)->toBe('+48 511 222 333');
+});
+
+it('shows the fixed +48 prefix on the form', function () {
+    $this->get(route('booking.show', [$this->physio, 'typ' => 'kolejna', 'data' => '2026-10-06', 'godzina' => '10:00']))
+        ->assertSee('+48')
+        ->assertSee('pattern="[0-9]{9}"', false);
 });

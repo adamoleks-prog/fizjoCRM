@@ -85,7 +85,7 @@ it('offers massage in online booking with its own length, rounded to the slot', 
     $this->post(route('booking.request', $this->operator), [
         'typ' => 'u'.$this->massage->id,
         'starts_at' => '2026-10-06 10:00',
-        'first_name' => 'Jan', 'last_name' => 'Kowalski', 'phone' => '602 118 940', 'consent' => 1,
+        'first_name' => 'Jan', 'last_name' => 'Kowalski', 'phone' => '602118940', 'consent' => 1,
     ])->assertRedirect(route('booking.code'));
 
     $sms = collect(Http::recorded())->map(fn ($pair) => $pair[0]['message'] ?? '')->last();

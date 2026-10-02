@@ -27,6 +27,7 @@ class BookingSettingsController extends Controller
             'hasSchedule' => $schedule->hasOwnPattern($user->id),
             'smsReady' => $sms->isConfigured(),
             'testMode' => app(OnlineBooking::class)->isTestMode(),
+            'requiresSmsCode' => app(OnlineBooking::class)->requiresSmsCode(),
             'pending' => Appointment::query()
                 ->with('patient')
                 ->where('operator_id', $user->id)

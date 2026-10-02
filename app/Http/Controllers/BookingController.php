@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\ConsentTemplate;
 use App\Models\User;
 use App\Services\Booking\OnlineBooking;
+use App\Services\Booking\Recaptcha;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,10 @@ class BookingController extends Controller
 {
     private const SESSION_KEY = 'booking.verification';
 
-    public function __construct(private readonly OnlineBooking $booking) {}
+    public function __construct(
+        private readonly OnlineBooking $booking,
+        private readonly Recaptcha $recaptcha,
+    ) {}
 
     public function index(): View|RedirectResponse
     {
@@ -58,6 +62,8 @@ class BookingController extends Controller
             'starts' => $starts,
             'chosen' => $chosen,
             'privacyText' => $this->privacyText($physiotherapist),
+            'requiresSmsCode' => $this->booking->requiresSmsCode(),
+            'recaptchaSiteKey' => $this->recaptcha->isActive() ? $this->recaptcha->siteKey() : null,
         ]);
     }
 
@@ -82,6 +88,12 @@ class BookingController extends Controller
             'consent.accepted' => 'Zaznacz, że zapoznałeś(-aś) się z informacją o przetwarzaniu danych.',
         ]);
 
+        if ($this->recaptcha->isActive() && ! $this->recaptcha->passes($request->input('recaptcha_token'), $request->ip())) {
+            return back()->withInput()->withErrors([
+                'recaptcha' => 'Nie udało się potwierdzić, że formularz wysyła człowiek. Odśwież stronę i spróbuj ponownie albo zadzwoń do gabinetu.',
+            ]);
+        }
+
         $type = $this->booking->visitTypes()[$data['typ']];
 
         $id = $this->booking->requestCode($physiotherapist, [
@@ -93,6 +105,13 @@ class BookingController extends Controller
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'],
         ], $request->ip());
+
+        if (! $this->booking->requiresSmsCode()) {
+            $appointment = $this->booking->bookWithoutCode($id);
+            $request->session()->put('booking.done', $appointment->cancel_token);
+
+            return redirect()->route('booking.done');
+        }
 
         $request->session()->put(self::SESSION_KEY, $id);
 

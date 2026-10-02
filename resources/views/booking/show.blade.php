@@ -25,7 +25,7 @@
         @if ($types === [])
             <p class="mt-2 text-sm text-gray-600">Zapisy online są chwilowo niedostępne.</p>
         @endif
-        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             @foreach ($types as $value => ['label' => $label, 'hint' => $hint])
                 <a href="{{ $link(['typ' => $value]) }}"
                    @class(['rounded-md border p-4', 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' => $type === $value, 'border-gray-300 hover:border-indigo-400' => $type !== $value])>
@@ -58,7 +58,7 @@
                 </div>
 
                 @if ($date)
-                    <div class="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    <div class="mt-3 grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
                         @forelse ($starts as $start)
                             <a href="{{ $link(['typ' => $type, 'data' => $date->toDateString(), 'godzina' => $start->format('H:i')]) }}#dane"
                                @class(['rounded-md border py-2 text-center text-sm', 'border-indigo-600 bg-indigo-600 text-white' => $chosen && $start->equalTo($chosen), 'border-gray-300 hover:border-indigo-400' => ! ($chosen && $start->equalTo($chosen))])>
@@ -84,10 +84,12 @@
             <h2 class="font-semibold">3. Twoje dane</h2>
             <p class="text-sm text-gray-600">
                 Wybrany termin: <strong>{{ $days_pl[$chosen->dayOfWeek] }} {{ $chosen->format('d.m.Y, H:i') }}</strong>.
-                Na podany numer wyślemy SMS z kodem potwierdzającym.
+                @if ($requiresSmsCode)
+                    Na podany numer wyślemy SMS z kodem potwierdzającym.
+                @endif
             </p>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label for="first_name" class="text-sm font-medium">Imię</label>
                     <input id="first_name" name="first_name" value="{{ old('first_name') }}" required autocomplete="given-name" class="{{ $input }}">
@@ -122,7 +124,31 @@
                 <span>Zapoznałem(-am) się z informacją o przetwarzaniu danych osobowych.</span>
             </label>
 
-            <button class="w-full py-3 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500">Wyślij kod SMS</button>
+            <input type="hidden" name="recaptcha_token" id="recaptcha_token">
+
+            <button class="w-full py-3 rounded-md bg-brand-500 text-white font-semibold hover:bg-brand-600">{{ $requiresSmsCode ? 'Wyślij kod SMS' : 'Zapisz się' }}</button>
+
+            @if ($recaptchaSiteKey)
+                <p class="text-xs text-gray-400">Formularz chroni reCAPTCHA Google — obowiązują <a href="https://policies.google.com/privacy" class="underline" target="_blank" rel="noopener">Polityka prywatności</a> i <a href="https://policies.google.com/terms" class="underline" target="_blank" rel="noopener">Warunki</a> Google.</p>
+            @endif
         </form>
+
+        @if ($recaptchaSiteKey)
+            <script src="https://www.google.com/recaptcha/api.js?render={{ urlencode($recaptchaSiteKey) }}"></script>
+            <script>
+                document.getElementById('dane').addEventListener('submit', function (event) {
+                    const form = this;
+                    if (form.dataset.ready) return;
+                    event.preventDefault();
+                    grecaptcha.ready(() => {
+                        grecaptcha.execute(@js($recaptchaSiteKey), { action: @js(\App\Services\Booking\Recaptcha::ACTION) }).then((token) => {
+                            document.getElementById('recaptcha_token').value = token;
+                            form.dataset.ready = '1';
+                            form.submit();
+                        });
+                    });
+                });
+            </script>
+        @endif
     @endif
 </x-public-layout>

@@ -56,6 +56,16 @@ class OnlineBooking
         return $until && Carbon::parse($until)->isFuture() ? Carbon::parse($until) : null;
     }
 
+    /**
+     * Whether the phone must be confirmed with a code. When the admin turns this
+     * off, a submitted form books straight away — reCAPTCHA is then the main
+     * guard against automated bookings.
+     */
+    public function requiresSmsCode(): bool
+    {
+        return $this->settings->get('booking.sms_verification', '1') === '1';
+    }
+
     /** No SMS gateway yet: codes are not sent and the fixed test code works. */
     public function isTestMode(): bool
     {
@@ -70,7 +80,8 @@ class OnlineBooking
 
     public function isOpen(User $physiotherapist): bool
     {
-        return $physiotherapist->online_booking_enabled && ($this->sms->isConfigured() || $this->isTestMode());
+        return $physiotherapist->online_booking_enabled
+            && (! $this->requiresSmsCode() || $this->sms->isConfigured() || $this->isTestMode());
     }
 
     /**
@@ -218,7 +229,7 @@ class OnlineBooking
         ]);
 
         try {
-            if (! $this->isTestMode()) {
+            if ($this->requiresSmsCode() && ! $this->isTestMode()) {
                 $this->sms->send($phone, "Kod zapisu na wizyte: {$code}. Wazny ".self::CODE_TTL_MINUTES.' minut. Nie podawaj go nikomu.');
             }
         } catch (Throwable) {
@@ -234,9 +245,20 @@ class OnlineBooking
     }
 
     /**
-     * Checks the code and books the visit.
+     * Books straight after the form when no SMS code is required.
      */
-    public function confirm(int $verificationId, string $code): Appointment
+    public function bookWithoutCode(int $verificationId): Appointment
+    {
+        abort_if($this->requiresSmsCode(), 403);
+
+        return $this->confirm($verificationId, null);
+    }
+
+    /**
+     * Checks the code and books the visit. A null code is only accepted through
+     * bookWithoutCode(), i.e. when the admin switched SMS confirmation off.
+     */
+    public function confirm(int $verificationId, ?string $code): Appointment
     {
         $verification = DB::table('booking_verifications')->where('id', $verificationId)->first();
 
@@ -245,7 +267,7 @@ class OnlineBooking
             throw ValidationException::withMessages(['code' => 'Kod wygasł. Wybierz termin jeszcze raz.']);
         }
 
-        if (! Hash::check(trim($code), $verification->code_hash)) {
+        if ($code === null ? $this->requiresSmsCode() : ! Hash::check(trim($code), $verification->code_hash)) {
             DB::table('booking_verifications')->where('id', $verificationId)->increment('attempts');
             $left = self::MAX_CODE_ATTEMPTS - $verification->attempts - 1;
 

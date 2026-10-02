@@ -13,7 +13,7 @@
         <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required autofocus
                class="block w-full text-center text-3xl tracking-[0.5em] border-gray-300 rounded-md shadow-sm focus:border-indigo-500">
 
-        <button class="w-full py-3 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500">Potwierdź wizytę</button>
+        <button class="w-full py-3 rounded-md bg-brand-500 text-white font-semibold hover:bg-brand-600">Potwierdź wizytę</button>
 
         <a href="{{ route('booking.index') }}" class="block text-center text-sm text-gray-500 underline">Wybierz inny termin</a>
     </form>

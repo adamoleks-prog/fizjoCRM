@@ -1,13 +1,13 @@
 {
-    "name": "CRM Fizjoterapia",
-    "short_name": "CRM Fizjo",
+    "name": "FIZJOroom — panel",
+    "short_name": "FIZJOroom",
     "description": "System zarządzania gabinetem fizjoterapeutycznym",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "orientation": "portrait-primary",
-    "background_color": "#1e3a5f",
-    "theme_color": "#1e3a5f",
+    "background_color": "#ffffff",
+    "theme_color": "#e5097f",
     "lang": "pl",
     "icons": [
         {

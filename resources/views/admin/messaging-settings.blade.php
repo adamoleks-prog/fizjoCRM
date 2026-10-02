@@ -128,6 +128,55 @@
                     </div>
                 </section>
 
+                {{-- Online booking protection --}}
+                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100 space-y-4">
+                    <h3 class="font-semibold">Zapisy online — zabezpieczenia</h3>
+
+                    <div>
+                        <input type="hidden" name="booking_sms_verification" value="0">
+                        <label class="flex items-center gap-2 text-sm font-medium">
+                            <input type="checkbox" name="booking_sms_verification" value="1" class="rounded border-gray-300 dark:border-gray-700 text-indigo-600" @checked($settings->get('booking.sms_verification', '1') === '1')>
+                            Wymagaj potwierdzenia telefonu kodem SMS
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Wyłączone: pacjent zapisuje się od razu po wysłaniu formularza. Stały pacjent (ten sam telefon i nazwisko) ma wtedy wizytę potwierdzoną bez sprawdzenia, że to naprawdę on — każdy, kto zna te dane, mógłby umówić wizytę na jego kartę. Nowi pacjenci nadal czekają na Twoje potwierdzenie. Przy wyłączonym kodzie włącz reCAPTCHA.
+                        </p>
+                    </div>
+
+                    <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+                        <input type="hidden" name="recaptcha_enabled" value="0">
+                        <label class="flex items-center gap-2 text-sm font-medium">
+                            <input type="checkbox" name="recaptcha_enabled" value="1" class="rounded border-gray-300 dark:border-gray-700 text-indigo-600" @checked($settings->bool('recaptcha.enabled'))>
+                            Google reCAPTCHA v3 na formularzu zapisów
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Klucze utworzysz w <a href="https://www.google.com/recaptcha/admin/create" target="_blank" rel="noopener" class="underline">konsoli reCAPTCHA</a>: typ „Na podstawie wyniku (v3)”, domena <span class="font-mono">{{ parse_url(config('app.url'), PHP_URL_HOST) }}</span>. Działa niewidocznie — pacjent nie klika obrazków.
+                        </p>
+                        <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <x-input-label for="recaptcha_site_key" value="Klucz witryny" />
+                                <input id="recaptcha_site_key" name="recaptcha_site_key" value="{{ old('recaptcha_site_key', $settings->get('recaptcha.site_key')) }}" autocomplete="off" class="{{ $input }}">
+                            </div>
+                            <div>
+                                <x-input-label for="recaptcha_secret_key" value="Tajny klucz" />
+                                <input id="recaptcha_secret_key" name="recaptcha_secret_key" type="password" autocomplete="new-password"
+                                       placeholder="{{ $hasRecaptchaSecret ? '•••••• zapisany — zostaw puste' : '' }}" class="{{ $input }}">
+                                @if ($hasRecaptchaSecret)
+                                    <input type="hidden" name="recaptcha_secret_key_clear" value="0">
+                                    <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                        <input type="checkbox" name="recaptcha_secret_key_clear" value="1" class="rounded border-gray-300 dark:border-gray-700"> usuń zapisany klucz
+                                    </label>
+                                @endif
+                            </div>
+                            <div>
+                                <x-input-label for="recaptcha_min_score" value="Próg (0,1–0,9)" />
+                                <input id="recaptcha_min_score" name="recaptcha_min_score" type="number" step="0.1" min="0.1" max="0.9" value="{{ old('recaptcha_min_score', $settings->get('recaptcha.min_score', '0.5')) }}" class="{{ $input }}">
+                            </div>
+                        </div>
+                        <x-input-error :messages="$errors->get('recaptcha_min_score')" class="mt-2" />
+                    </div>
+                </section>
+
                 {{-- Booking test mode --}}
                 <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
                     <h3 class="font-semibold">Tryb testowy zapisów online</h3>

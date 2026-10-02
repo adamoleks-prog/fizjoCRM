@@ -1,3 +1,4 @@
+@php($logo = 'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/logo.png'))))
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -6,22 +7,23 @@
     <style>
         @page { margin: 22mm 18mm 20mm 18mm; }
         body { font-family: "DejaVu Sans", sans-serif; font-size: 10.5pt; color: #1f2937; line-height: 1.45; }
-        .practice { border-bottom: 2px solid #4f46e5; padding-bottom: 8px; margin-bottom: 18px; }
-        .practice-name { font-size: 15pt; font-weight: bold; color: #312e81; }
+        .practice { border-bottom: 2px solid #e5097f; padding-bottom: 8px; margin-bottom: 18px; }
+        .practice-name { font-size: 15pt; font-weight: bold; color: #16232e; }
         .practice-contact { font-size: 9pt; color: #4b5563; }
         h1 { font-size: 14pt; margin: 0 0 10px; }
         table.meta { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
         table.meta td { padding: 3px 0; vertical-align: top; }
         table.meta td.label { width: 32%; color: #6b7280; }
-        h2 { font-size: 11pt; color: #312e81; margin: 18px 0 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; }
+        h2 { font-size: 11pt; color: #0079ad; margin: 18px 0 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; }
         .text { white-space: pre-line; }
         .muted { color: #9ca3af; }
-        .next { background: #eef2ff; border: 1px solid #c7d2fe; padding: 8px 10px; margin-top: 18px; }
+        .next { background: #e6f6fd; border: 1px solid #99dbf7; padding: 8px 10px; margin-top: 18px; }
         .footer { position: fixed; bottom: -10mm; left: 0; right: 0; font-size: 8pt; color: #9ca3af; text-align: center; }
     </style>
 </head>
 <body>
     <div class="practice">
+        <img src="{{ $logo }}" alt="FIZJOroom" style="height: 34px; float: right;">
         <div class="practice-name">{{ $physiotherapist->practice_name ?: $physiotherapist->name }}</div>
         <div class="practice-contact">
             {{ collect([$physiotherapist->practice_address, $physiotherapist->practice_phone ? 'tel. '.$physiotherapist->practice_phone : null])->filter()->implode(' · ') }}

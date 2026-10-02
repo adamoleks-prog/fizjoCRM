@@ -5,14 +5,15 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>FIZJOroom — panel</title>
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
 
         <!-- PWA -->
         <link rel="manifest" href="/manifest.json">
-        <meta name="theme-color" content="#1e3a5f">
+        <meta name="theme-color" content="#e5097f">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-title" content="CRM Fizjo">
+        <meta name="apple-mobile-web-app-title" content="FIZJOroom">
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 
         <!-- Fonts -->

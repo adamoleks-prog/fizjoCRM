@@ -31,6 +31,7 @@ class MessagingSettingsController extends Controller
             'hasPassword' => $this->settings->has('mail.password'),
             'hasToken' => $this->settings->has('sms.token'),
             'bookingTestUntil' => OnlineBooking::testModeUntil($this->settings),
+            'hasRecaptchaSecret' => $this->settings->has('recaptcha.secret_key'),
         ]);
     }
 
@@ -52,6 +53,12 @@ class MessagingSettingsController extends Controller
             'reminders_sms_enabled' => ['boolean'],
             'reminders_hours_before' => ['required', 'integer', 'between:3,72'],
             'booking_test_mode' => ['boolean'],
+            'booking_sms_verification' => ['boolean'],
+            'recaptcha_enabled' => ['boolean'],
+            'recaptcha_site_key' => ['nullable', 'string', 'max:100'],
+            'recaptcha_secret_key' => ['nullable', 'string', 'max:100'],
+            'recaptcha_secret_key_clear' => ['boolean'],
+            'recaptcha_min_score' => ['nullable', 'numeric', 'between:0.1,0.9'],
         ], [
             'sms_sender.regex' => 'Nazwa nadawcy SMS: tylko litery bez polskich znaków, cyfry, spacja, kropka i myślnik.',
             'mail_from_address.required_with' => 'Podaj adres nadawcy.',
@@ -81,6 +88,17 @@ class MessagingSettingsController extends Controller
             $values['sms.token'] = $data['sms_token'];
         } elseif ($request->boolean('sms_token_clear')) {
             $values['sms.token'] = null;
+        }
+
+        $values['booking.sms_verification'] = $request->boolean('booking_sms_verification', true) ? '1' : '0';
+        $values['recaptcha.enabled'] = $request->boolean('recaptcha_enabled') ? '1' : '0';
+        $values['recaptcha.site_key'] = $data['recaptcha_site_key'] ?? null;
+        $values['recaptcha.min_score'] = $data['recaptcha_min_score'] ?? '0.5';
+
+        if (filled($data['recaptcha_secret_key'] ?? null)) {
+            $values['recaptcha.secret_key'] = $data['recaptcha_secret_key'];
+        } elseif ($request->boolean('recaptcha_secret_key_clear')) {
+            $values['recaptcha.secret_key'] = null;
         }
 
         // Test mode switches itself off: a fixed code on a public page must not

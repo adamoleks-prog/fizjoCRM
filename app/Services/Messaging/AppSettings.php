@@ -12,14 +12,15 @@ use Illuminate\Support\Facades\DB;
  */
 class AppSettings
 {
-    public const SECRETS = ['mail.password', 'sms.token'];
+    public const SECRETS = ['mail.password', 'sms.token', 'recaptcha.secret_key'];
 
     public const KEYS = [
         'mail.host', 'mail.port', 'mail.encryption', 'mail.username', 'mail.password',
         'mail.from_address', 'mail.from_name',
         'sms.token', 'sms.sender',
         'reminders.email_enabled', 'reminders.sms_enabled', 'reminders.hours_before',
-        'booking.test_until',
+        'booking.test_until', 'booking.sms_verification',
+        'recaptcha.enabled', 'recaptcha.site_key', 'recaptcha.secret_key', 'recaptcha.min_score',
     ];
 
     /** @var array<string, string|null>|null */

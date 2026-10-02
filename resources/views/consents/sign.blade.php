@@ -11,8 +11,9 @@
     </style>
 </head>
 {{-- No navigation on purpose: the tablet is handed to the patient. --}}
-<body class="font-sans antialiased bg-gray-100 text-gray-900">
+<body class="font-sans antialiased bg-brand-paper text-gray-900">
     <div class="max-w-3xl mx-auto px-4 py-6 space-y-5">
+        <img src="{{ asset('images/logo.png') }}" alt="FIZJOroom" class="h-10 w-auto">
 
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="text-sm text-gray-500">Pacjent: <strong class="text-gray-900">{{ $patient->first_name }} {{ $patient->last_name }}</strong></div>
@@ -63,7 +64,7 @@
                     <canvas id="signature-pad" class="mt-2 w-full h-48 bg-white border-2 border-dashed border-gray-400 rounded-md"></canvas>
                 </div>
 
-                <button class="w-full py-3 rounded-md bg-indigo-600 text-white text-lg font-semibold hover:bg-indigo-500">
+                <button class="w-full py-3 rounded-md bg-brand-500 text-white text-lg font-semibold hover:bg-brand-600">
                     Podpisuję
                 </button>
             </form>

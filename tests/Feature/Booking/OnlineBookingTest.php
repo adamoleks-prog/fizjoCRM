@@ -4,10 +4,13 @@ use App\Enums\AppointmentStatus;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\User;
+use App\Services\Booking\OnlineBooking;
 use App\Services\Messaging\AppSettings;
 use Carbon\Carbon;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 
 /** The code from the last SMS sent to SMSAPI. */
 function lastSmsCode(): ?string
@@ -267,4 +270,84 @@ it('does not accept the test code when test mode is off', function () {
     ($this->book)();
 
     $this->post(route('booking.confirm'), ['code' => '123456'])->assertSessionHasErrors('code');
+});
+
+/* ---------- without SMS code, reCAPTCHA ---------- */
+
+function adminSaves(array $fields): void
+{
+    test()->actingAs(User::factory()->admin()->create())
+        ->put(route('admin.messaging.update'), array_merge(['mail_encryption' => 'tls', 'reminders_hours_before' => 24, 'booking_sms_verification' => 1], $fields))
+        ->assertSessionHasNoErrors();
+    auth()->logout();
+}
+
+it('books straight away when the SMS code is switched off', function () {
+    app(AppSettings::class)->put(['sms.token' => null]);
+    adminSaves(['booking_sms_verification' => 0]);
+    Http::fake();
+
+    $this->get(route('booking.show', [$this->physio, 'typ' => 'kolejna', 'data' => '2026-10-06', 'godzina' => '10:00']))
+        ->assertOk()
+        ->assertSee('Zapisz się')
+        ->assertDontSee('Wyślij kod SMS');
+
+    ($this->book)()->assertRedirect(route('booking.done'));
+
+    expect(Appointment::withoutGlobalScopes()->sole())
+        ->patient_id->toBe($this->existing->id)
+        ->status->toBe(AppointmentStatus::Scheduled);
+
+    // A new person still waits for the physiotherapist.
+    ($this->book)(['typ' => 'pierwsza', 'starts_at' => '2026-10-07 10:00', 'last_name' => 'Nowa', 'phone' => '511 222 333'])
+        ->assertRedirect(route('booking.done'));
+    expect(Appointment::withoutGlobalScopes()->latest('id')->first()->status)->toBe(AppointmentStatus::Pending);
+
+    Http::assertNothingSent();
+});
+
+it('cannot skip the code while it is required', function () {
+    ($this->book)();
+    $id = session('booking.verification');
+
+    expect(fn () => app(OnlineBooking::class)->confirm($id, null))
+        ->toThrow(ValidationException::class);
+    expect(Appointment::withoutGlobalScopes()->count())->toBe(0);
+});
+
+it('checks reCAPTCHA when it is on', function () {
+    adminSaves(['recaptcha_enabled' => 1, 'recaptcha_site_key' => 'site-key-123', 'recaptcha_secret_key' => 'secret-456']);
+
+    $this->get(route('booking.show', [$this->physio, 'typ' => 'kolejna', 'data' => '2026-10-06', 'godzina' => '10:00']))
+        ->assertSee('recaptcha/api.js?render=site-key-123', false);
+
+    Http::fake([
+        'www.google.com/recaptcha/*' => Http::sequence()
+            ->push(['success' => true, 'action' => 'booking', 'score' => 0.1])
+            ->push(['success' => true, 'action' => 'booking', 'score' => 0.9]),
+        'api.smsapi.pl/*' => Http::response(['count' => 1]),
+    ]);
+
+    ($this->book)(['recaptcha_token' => 'bot'])->assertSessionHasErrors('recaptcha');
+    ($this->book)(['recaptcha_token' => 'human'])->assertRedirect(route('booking.code'));
+
+    Http::assertSent(fn (Request $r) => str_contains($r->url(), 'siteverify') && $r['secret'] === 'secret-456' && $r['response'] === 'human');
+});
+
+it('refuses when Google cannot be reached or no token is sent', function () {
+    adminSaves(['recaptcha_enabled' => 1, 'recaptcha_site_key' => 'k', 'recaptcha_secret_key' => 's']);
+    Http::fake(['www.google.com/recaptcha/*' => Http::response(null, 500)]);
+
+    ($this->book)()->assertSessionHasErrors('recaptcha');
+    ($this->book)(['recaptcha_token' => 'x'])->assertSessionHasErrors('recaptcha');
+});
+
+it('stores the reCAPTCHA secret encrypted and never shows it', function () {
+    adminSaves(['recaptcha_enabled' => 1, 'recaptcha_site_key' => 'k', 'recaptcha_secret_key' => 'very-secret-value']);
+
+    expect(DB::table('settings')->where('key', 'recaptcha.secret_key')->value('value'))->not->toBe('very-secret-value');
+
+    $this->actingAs(User::factory()->admin()->create())->get(route('admin.messaging.edit'))
+        ->assertDontSee('very-secret-value')
+        ->assertSee('zapisany');
 });

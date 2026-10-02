@@ -1,3 +1,4 @@
+@php($logo = 'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/logo.png'))))
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -17,6 +18,7 @@
 </head>
 <body>
     <div class="practice">
+        <img src="{{ $logo }}" alt="FIZJOroom" style="height: 28px; float: right;">
         {{ $physiotherapist->practice_name ?: $physiotherapist->name }}
         {{ $physiotherapist->practice_address ? ' · '.$physiotherapist->practice_address : '' }}
     </div>

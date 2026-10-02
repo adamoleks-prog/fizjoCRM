@@ -24,6 +24,14 @@ class DashboardController extends Controller
                 ->where('status', AppointmentStatus::Scheduled)
                 ->count(),
             'patientCount' => Patient::count(),
+            // The coming week after today, grouped by day on the page.
+            'upcoming' => Appointment::query()
+                ->with(['patient', 'service'])
+                ->whereIn('status', [AppointmentStatus::Scheduled, AppointmentStatus::Pending])
+                ->whereBetween('starts_at', [now()->addDay()->startOfDay(), now()->addDays(7)->endOfDay()])
+                ->orderBy('starts_at')
+                ->get()
+                ->groupBy(fn (Appointment $a) => $a->starts_at->toDateString()),
             'pendingBookings' => Appointment::query()
                 ->with('patient')
                 ->where('status', AppointmentStatus::Pending)

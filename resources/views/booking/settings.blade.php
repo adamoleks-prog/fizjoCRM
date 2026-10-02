@@ -34,7 +34,7 @@
             {{-- Prerequisites --}}
             <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-sm text-gray-900 dark:text-gray-100 space-y-2">
                 <h3 class="font-semibold text-base">Co jest potrzebne</h3>
-                <p>{{ $smsReady ? '✅' : '❌' }} Bramka SMS skonfigurowana — pacjent potwierdza numer kodem SMS.
+                <p>{{ $smsReady ? '✅' : ($requiresSmsCode ? '❌' : '⚠️') }} Bramka SMS skonfigurowana — {{ $requiresSmsCode ? 'pacjent potwierdza numer kodem SMS' : 'kod SMS jest wyłączony, ale bez bramki pacjent nie dostanie SMS-a z potwierdzeniem' }}.
                     @unless ($smsReady) <span class="text-gray-500">Ustawia ją administrator w „Ustawieniach wysyłki”.</span> @endunless</p>
                 <p>{{ $hasSchedule ? '✅' : '⚠️' }} Własny <a href="{{ route('schedule.edit') }}" class="underline">czas pracy</a>
                     @unless ($hasSchedule) <span class="text-gray-500">— bez niego pacjenci zobaczą domyślne godziny gabinetu.</span> @endunless</p>
@@ -44,7 +44,7 @@
                     <p>🧪 Tryb testowy zapisów jest włączony — zamiast SMS-a działa kod <strong class="font-mono">{{ \App\Services\Booking\OnlineBooking::TEST_CODE }}</strong>.</p>
                 @endif
 
-                @if ($user->online_booking_enabled && ($smsReady || $testMode))
+                @if ($user->online_booking_enabled && ($smsReady || $testMode || ! $requiresSmsCode))
                     <div class="mt-3 p-3 rounded-md bg-indigo-50 dark:bg-indigo-900/30">
                         Twoja strona zapisów: <a href="{{ route('booking.show', $user) }}" target="_blank" class="font-mono underline break-all">{{ route('booking.show', $user) }}</a>
                         <br><span class="text-xs text-gray-600 dark:text-gray-400">Wspólna strona wszystkich fizjoterapeutów: {{ route('booking.index') }}</span>

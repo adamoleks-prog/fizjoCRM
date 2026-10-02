@@ -48,6 +48,35 @@
                     <p class="text-sm text-gray-500 dark:text-gray-400">Brak wizyt zaplanowanych na dziś.</p>
                 @endforelse
             </div>
+
+            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100">
+                <div class="flex items-baseline justify-between mb-4">
+                    <h3 class="font-semibold">Kolejne wizyty <span class="font-normal text-sm text-gray-500 dark:text-gray-400">· najbliższe 7 dni</span></h3>
+                    <a href="{{ route('appointments.index') }}" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Kalendarz</a>
+                </div>
+
+                @forelse ($upcoming as $day => $appointments)
+                    @php($date = \Carbon\Carbon::parse($day))
+                    <div class="mt-4 first:mt-0">
+                        <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            {{ $date->isTomorrow() ? 'Jutro' : ucfirst($date->translatedFormat('l')) }}, {{ $date->format('d.m') }}
+                            <span class="font-normal normal-case">· {{ $appointments->count() }} {{ $appointments->count() === 1 ? 'wizyta' : ($appointments->count() < 5 ? 'wizyty' : 'wizyt') }}</span>
+                        </div>
+                        @foreach ($appointments as $appointment)
+                            <a href="{{ route('appointments.show', $appointment) }}"
+                               class="flex items-center justify-between border-b dark:border-gray-700 py-2.5 text-sm last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 rounded">
+                                <span class="font-medium w-24 shrink-0">{{ $appointment->starts_at->format('H:i') }}–{{ $appointment->ends_at->format('H:i') }}</span>
+                                <span class="flex-1 px-4">{{ $appointment->patient->last_name }} {{ $appointment->patient->first_name }}</span>
+                                <span class="text-gray-500 dark:text-gray-400 text-right">
+                                    {{ $appointment->serviceName() }}@if ($appointment->status === \App\Enums\AppointmentStatus::Pending) · <span class="text-amber-600 dark:text-amber-400">do potwierdzenia</span>@endif
+                                </span>
+                            </a>
+                        @endforeach
+                    </div>
+                @empty
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Brak wizyt w najbliższych 7 dniach.</p>
+                @endforelse
+            </div>
         </div>
     </div>
 </x-app-layout>

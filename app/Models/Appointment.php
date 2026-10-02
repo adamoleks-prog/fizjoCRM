@@ -44,6 +44,7 @@ class Appointment extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'reminder_sent_at' => 'datetime',
+            'booking_details' => 'array',
             'status' => AppointmentStatus::class,
         ];
     }

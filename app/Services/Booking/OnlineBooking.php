@@ -316,6 +316,11 @@ class OnlineBooking
             $appointment->source = 'online';
             $appointment->cancel_token = Str::random(40);
             $appointment->booking_phone = $verification->phone;
+            $appointment->booking_details = [
+                'first_name' => $payload['first_name'],
+                'last_name' => $payload['last_name'],
+                'email' => $payload['email'],
+            ];
             $appointment->save();
 
             return $appointment;
@@ -326,10 +331,60 @@ class OnlineBooking
         return $appointment;
     }
 
-    public function approve(Appointment $appointment): void
+    /**
+     * Confirms the visit on the card it was matched to. When it came from another
+     * number, the card's phone can be replaced with the new one.
+     */
+    public function approve(Appointment $appointment, bool $updatePhone = false): void
     {
-        $appointment->update(['status' => AppointmentStatus::Scheduled]);
+        DB::transaction(function () use ($appointment, $updatePhone) {
+            if ($updatePhone && $appointment->booking_phone) {
+                $patient = Patient::withoutGlobalScope(OperatorScope::class)->findOrFail($appointment->patient_id);
+                $patient->phone = PhoneNumber::format($appointment->booking_phone);
+                $patient->save();
+            }
+
+            $appointment->update(['status' => AppointmentStatus::Scheduled]);
+        });
+
         $this->notify($appointment, User::findOrFail($appointment->operator_id));
+    }
+
+    /**
+     * The booker only shares a name with the matched patient: give them their own
+     * card from what they typed in the form, move the visit there and confirm it.
+     */
+    public function approveAsNewPatient(Appointment $appointment): Patient
+    {
+        $details = $appointment->booking_details;
+
+        if (! $details || ! $appointment->booking_phone) {
+            throw ValidationException::withMessages(['booking' => 'Brak danych z formularza zapisu — załóż kartę ręcznie.']);
+        }
+
+        $patient = DB::transaction(function () use ($appointment, $details) {
+            $patient = new Patient([
+                'first_name' => $details['first_name'],
+                'last_name' => $details['last_name'],
+                'phone' => PhoneNumber::format($appointment->booking_phone),
+                'email' => $details['email'] ?? null,
+                'reminders_enabled' => true,
+            ]);
+            $patient->operator_id = $appointment->operator_id;
+            $patient->source = 'online';
+            $patient->online_consent_at = $appointment->created_at;
+            $patient->save();
+
+            $appointment->patient_id = $patient->id;
+            $appointment->status = AppointmentStatus::Scheduled;
+            $appointment->save();
+
+            return $patient;
+        });
+
+        $this->notify($appointment, User::findOrFail($appointment->operator_id));
+
+        return $patient;
     }
 
     public function reject(Appointment $appointment): void

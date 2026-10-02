@@ -432,3 +432,77 @@ it('shows the fixed +48 prefix on the form', function () {
         ->assertSee('+48')
         ->assertSee('pattern="[0-9]{9}"', false);
 });
+
+/* ---------- deciding about a booking from another number ---------- */
+
+function bookFromOtherNumber(): Appointment
+{
+    (test()->book)(['first_name' => 'Jan', 'last_name' => 'Kowalski', 'phone' => '699888777', 'email' => 'jan2@example.com']);
+    test()->post(route('booking.confirm'), ['code' => lastSmsCode()]);
+
+    return Appointment::withoutGlobalScopes()->sole();
+}
+
+it('keeps what was typed in the form on the visit', function () {
+    expect(bookFromOtherNumber()->booking_details)->toBe(['first_name' => 'Jan', 'last_name' => 'Kowalski', 'email' => 'jan2@example.com']);
+});
+
+it('confirms on the matched card and can update its phone', function () {
+    $appointment = bookFromOtherNumber();
+
+    $this->actingAs($this->physio)
+        ->post(route('booking.approve', $appointment), ['update_phone' => 1])
+        ->assertSessionHasNoErrors();
+
+    expect($appointment->fresh()->status)->toBe(AppointmentStatus::Scheduled)
+        ->and($this->existing->fresh()->phone)->toBe('+48 699 888 777');
+});
+
+it('confirms without touching the phone unless asked', function () {
+    $appointment = bookFromOtherNumber();
+
+    $this->actingAs($this->physio)->post(route('booking.approve', $appointment));
+
+    expect($this->existing->fresh()->phone)->toBe('602 118 940');
+});
+
+it('moves the visit to a new card when it is someone else', function () {
+    $appointment = bookFromOtherNumber();
+
+    $this->actingAs($this->physio)
+        ->post(route('booking.approve-new', $appointment))
+        ->assertRedirect(route('appointments.show', $appointment));
+
+    $appointment->refresh();
+    $patient = Patient::withoutGlobalScopes()->find($appointment->patient_id);
+
+    expect($patient->id)->not->toBe($this->existing->id)
+        ->and($patient->first_name)->toBe('Jan')
+        ->and($patient->last_name)->toBe('Kowalski')
+        ->and($patient->phone)->toBe('+48 699 888 777')
+        ->and($patient->email)->toBe('jan2@example.com')
+        ->and($patient->operator_id)->toBe($this->physio->id)
+        ->and($appointment->status)->toBe(AppointmentStatus::Scheduled)
+        ->and($this->existing->fresh()->phone)->toBe('602 118 940');
+
+    Http::assertSent(fn (Request $r) => ($r['to'] ?? null) === '48699888777' && str_contains($r['message'] ?? '', 'Potwierdzamy wizyte'));
+});
+
+it('shows the three choices only for a booking from another number', function () {
+    $appointment = bookFromOtherNumber();
+
+    $this->actingAs($this->physio)->get(route('appointments.show', $appointment))
+        ->assertSee('Potwierdź — to ten pacjent')
+        ->assertSee('To inna osoba — nowa karta')
+        ->assertSee('zmień numer w karcie na +48 699 888 777');
+});
+
+it('keeps the new-card action to the owning physiotherapist', function () {
+    $appointment = bookFromOtherNumber();
+
+    $this->actingAs(User::factory()->operator()->create())
+        ->post(route('booking.approve-new', $appointment))
+        ->assertNotFound();
+
+    expect(Patient::withoutGlobalScopes()->count())->toBe(1);
+});

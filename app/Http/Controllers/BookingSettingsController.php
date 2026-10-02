@@ -59,14 +59,28 @@ class BookingSettingsController extends Controller
         return redirect()->route('booking.settings')->with('status', 'Zapisano ustawienia zapisów online.');
     }
 
-    public function approve(Appointment $appointment, OnlineBooking $booking): RedirectResponse
+    public function approve(Request $request, Appointment $appointment, OnlineBooking $booking): RedirectResponse
     {
         $this->authorize('update', $appointment);
         abort_unless($appointment->status === AppointmentStatus::Pending, 422);
 
-        $booking->approve($appointment);
+        $updatePhone = $request->boolean('update_phone');
+        $booking->approve($appointment, $updatePhone);
 
-        return back()->with('status', 'Wizyta potwierdzona. Pacjent dostał SMS.');
+        return back()->with('status', 'Wizyta potwierdzona. Pacjent dostał SMS.'.($updatePhone ? ' Numer telefonu w karcie zaktualizowany.' : ''));
+    }
+
+    /** "That is someone else" — a new card from the booking form, visit moved and confirmed. */
+    public function approveAsNewPatient(Appointment $appointment, OnlineBooking $booking): RedirectResponse
+    {
+        $this->authorize('update', $appointment);
+        abort_unless($appointment->status === AppointmentStatus::Pending, 422);
+
+        $patient = $booking->approveAsNewPatient($appointment);
+
+        return redirect()
+            ->route('appointments.show', $appointment)
+            ->with('status', 'Założono nową kartę: '.$patient->first_name.' '.$patient->last_name.'. Wizyta przeniesiona i potwierdzona, pacjent dostał SMS.');
     }
 
     public function reject(Appointment $appointment, OnlineBooking $booking): RedirectResponse

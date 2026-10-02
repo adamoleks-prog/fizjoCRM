@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::put('settings/booking', [BookingSettingsController::class, 'update'])->name('booking.settings.update');
     Route::post('appointments/{appointment}/approve', [BookingSettingsController::class, 'approve'])->name('booking.approve');
     Route::post('appointments/{appointment}/reject', [BookingSettingsController::class, 'reject'])->name('booking.reject');
+    Route::post('appointments/{appointment}/approve-new-patient', [BookingSettingsController::class, 'approveAsNewPatient'])->name('booking.approve-new');
 
     Route::get('settings/schedule', [WorkScheduleController::class, 'edit'])->name('schedule.edit');
     Route::put('settings/schedule', [WorkScheduleController::class, 'updatePattern'])->name('schedule.pattern');

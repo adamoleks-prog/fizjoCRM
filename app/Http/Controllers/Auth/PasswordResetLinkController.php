@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\SecurityEventType;
 use App\Http\Controllers\Controller;
+use App\Services\Monitoring\SecurityLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -24,7 +26,7 @@ class PasswordResetLinkController extends Controller
      *
      * @throws ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, SecurityLog $log): RedirectResponse
     {
         $request->validate([
             'email' => ['required', 'email'],
@@ -36,6 +38,8 @@ class PasswordResetLinkController extends Controller
         $status = Password::sendResetLink(
             $request->only('email')
         );
+
+        $log->record(SecurityEventType::PasswordResetRequested, ['account_exists' => $status !== Password::INVALID_USER], email: $request->string('email')->value());
 
         return $status == Password::RESET_LINK_SENT
                     ? back()->with('status', __($status))

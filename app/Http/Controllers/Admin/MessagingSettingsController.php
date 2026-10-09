@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\SecurityEventType;
 use App\Http\Controllers\Controller;
 use App\Mail\TestMessageMail;
 use App\Services\Booking\OnlineBooking;
@@ -10,6 +11,7 @@ use App\Services\Messaging\MessagingNotConfigured;
 use App\Services\Messaging\OutgoingMail;
 use App\Services\Messaging\SmsFailed;
 use App\Services\Messaging\SmsGateway;
+use App\Services\Monitoring\SecurityLog;
 use App\Support\PersonalData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +38,7 @@ class MessagingSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, SecurityLog $log): RedirectResponse
     {
         $data = $request->validate([
             'mail_host' => ['nullable', 'string', 'max:255'],
@@ -111,7 +113,17 @@ class MessagingSettingsController extends Controller
             $values['booking.test_until'] = null;
         }
 
+        $changed = array_keys(array_filter(
+            $values,
+            fn ($value, $key) => (string) $this->settings->get($key) !== (string) $value,
+            ARRAY_FILTER_USE_BOTH,
+        ));
+
         $this->settings->put($values);
+
+        if ($changed !== []) {
+            $log->record(SecurityEventType::SettingsChanged, ['area' => 'Ustawienia wysyłki i zapisów', 'changed' => $changed]);
+        }
 
         return redirect()->route('admin.messaging.edit')->with('status', 'Zapisano ustawienia wysyłki.');
     }

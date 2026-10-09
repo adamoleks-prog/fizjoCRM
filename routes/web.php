@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\AccessLogController;
 use App\Http\Controllers\Admin\MessagingSettingsController;
+use App\Http\Controllers\Admin\SecurityLogController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\AiClinicalCaseController;
 use App\Http\Controllers\AiRecommendationController;
 use App\Http\Controllers\AppointmentController;
@@ -95,6 +98,12 @@ Route::middleware('auth')->group(function () {
         Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('messaging.update');
         Route::post('messaging/test-email', [MessagingSettingsController::class, 'testEmail'])->name('messaging.test-email');
         Route::post('messaging/test-sms', [MessagingSettingsController::class, 'testSms'])->name('messaging.test-sms');
+        Route::get('system', [SystemStatusController::class, 'show'])->name('system.show');
+        Route::put('system', [SystemStatusController::class, 'update'])->name('system.update');
+        Route::post('system/test-alert', [SystemStatusController::class, 'testAlert'])->name('system.test-alert');
+        Route::post('system/errors/{appError}/resolve', [SystemStatusController::class, 'resolveError'])->name('system.errors.resolve');
+        Route::get('security', [SecurityLogController::class, 'index'])->name('security.index');
+        Route::get('access-log', [AccessLogController::class, 'index'])->name('access-log.index');
     });
 
     Route::get('patients/{patient}/consents/create', [ConsentController::class, 'create'])->name('consents.create');

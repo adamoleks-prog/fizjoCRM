@@ -21,6 +21,7 @@ class AppSettings
         'reminders.email_enabled', 'reminders.sms_enabled', 'reminders.hours_before',
         'booking.test_until', 'booking.sms_verification',
         'recaptcha.enabled', 'recaptcha.site_key', 'recaptcha.secret_key', 'recaptcha.min_score',
+        'monitoring.alerts_enabled', 'monitoring.daily_report', 'monitoring.alert_email', 'monitoring.healthcheck_url',
     ];
 
     /** @var array<string, string|null>|null */

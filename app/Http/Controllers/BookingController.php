@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SecurityEventType;
 use App\Models\Appointment;
 use App\Models\ConsentTemplate;
 use App\Models\User;
 use App\Services\Booking\OnlineBooking;
 use App\Services\Booking\Recaptcha;
+use App\Services\Monitoring\SecurityLog;
 use App\Support\PersonalData;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -25,6 +28,7 @@ class BookingController extends Controller
     public function __construct(
         private readonly OnlineBooking $booking,
         private readonly Recaptcha $recaptcha,
+        private readonly SecurityLog $log,
     ) {}
 
     public function index(): View|RedirectResponse
@@ -74,6 +78,7 @@ class BookingController extends Controller
 
         // Bots fill every field, people never see this one.
         if (filled($request->input('website'))) {
+            $this->log->record(SecurityEventType::BookingHoneypot);
             abort(422);
         }
 
@@ -92,6 +97,8 @@ class BookingController extends Controller
         ]);
 
         if ($this->recaptcha->isActive() && ! $this->recaptcha->passes($request->input('recaptcha_token'), $request->ip())) {
+            $this->log->record(SecurityEventType::BookingRecaptchaFailed);
+
             return back()->withInput()->withErrors([
                 'recaptcha' => 'Nie udało się potwierdzić, że formularz wysyła człowiek. Odśwież stronę i spróbuj ponownie albo zadzwoń do gabinetu.',
             ]);
@@ -142,7 +149,13 @@ class BookingController extends Controller
 
         $request->validate(['code' => ['required', 'string', 'max:10']]);
 
-        $appointment = $this->booking->confirm((int) $id, $request->string('code')->value());
+        try {
+            $appointment = $this->booking->confirm((int) $id, $request->string('code')->value());
+        } catch (ValidationException $e) {
+            $this->log->record(SecurityEventType::BookingCodeFailed);
+
+            throw $e;
+        }
 
         $request->session()->forget(self::SESSION_KEY);
         $request->session()->put('booking.done', $appointment->cancel_token);

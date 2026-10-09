@@ -77,6 +77,15 @@
                             <x-dropdown-link :href="route('admin.messaging.edit')">
                                 Ustawienia wysyłki
                             </x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.system.show')">
+                                Stan systemu
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.security.index')">
+                                Dziennik bezpieczeństwa
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.access-log.index')">
+                                Dziennik dostępu
+                            </x-dropdown-link>
                         @endif
 
                         <!-- Authentication -->
@@ -162,6 +171,15 @@
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.messaging.edit')">
                         Ustawienia wysyłki
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.system.show')">
+                        Stan systemu
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.security.index')">
+                        Dziennik bezpieczeństwa
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.access-log.index')">
+                        Dziennik dostępu
                     </x-responsive-nav-link>
                 @endif
 

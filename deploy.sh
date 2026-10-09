@@ -49,6 +49,10 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+echo "  -- uprawnienia plikow z kluczami (inni uzytkownicy serwera nie moga ich czytac)"
+chmod 600 .env bootstrap/cache/config.php
+chmod 700 storage/logs
+
 echo "  -- restart kolejki (na wypadek działającego workera)"
 php artisan queue:restart
 

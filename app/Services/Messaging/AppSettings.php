@@ -22,6 +22,7 @@ class AppSettings
         'booking.test_until', 'booking.sms_verification',
         'recaptcha.enabled', 'recaptcha.site_key', 'recaptcha.secret_key', 'recaptcha.min_score',
         'monitoring.alerts_enabled', 'monitoring.daily_report', 'monitoring.alert_email', 'monitoring.healthcheck_url',
+        'backup.last_attempt_at', 'backup.last_success_at', 'backup.last_file', 'backup.last_error',
     ];
 
     /** @var array<string, string|null>|null */

@@ -21,6 +21,7 @@ enum SecurityEventType: string
     case BookingRecaptchaFailed = 'booking_recaptcha_failed';
     case BookingCodeFailed = 'booking_code_failed';
     case SettingsChanged = 'settings_changed';
+    case BackupDownloaded = 'backup_downloaded';
 
     public function label(): string
     {
@@ -42,6 +43,7 @@ enum SecurityEventType: string
             self::BookingRecaptchaFailed => 'Zapisy: odrzucone przez reCAPTCHA',
             self::BookingCodeFailed => 'Zapisy: błędny kod SMS',
             self::SettingsChanged => 'Zmiana ustawień',
+            self::BackupDownloaded => 'Pobranie kopii zapasowej',
         };
     }
 
@@ -51,7 +53,7 @@ enum SecurityEventType: string
         return match ($this) {
             self::Login, self::Logout, self::PasswordResetRequested, self::CsrfMismatch,
             self::BookingCodeFailed, self::RecordNotFound => 'info',
-            self::Lockout, self::BookingHoneypot => 'critical',
+            self::Lockout, self::BookingHoneypot, self::BackupDownloaded => 'critical',
             default => 'warning',
         };
     }

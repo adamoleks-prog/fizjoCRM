@@ -41,6 +41,11 @@ class SecurityAlerts
                 $event->type->label().': '.($who ?? 'konto #'.$event->user_id),
                 [$where, 'Jeśli nikt z gabinetu tego nie robił — konto mogło zostać przejęte. Zmień hasło i sprawdź dziennik bezpieczeństwa.'],
             ),
+            SecurityEventType::BackupDownloaded => $this->send(
+                'backup-downloaded:'.$event->id,
+                'Pobrano kopię zapasową',
+                ['Kto: '.($event->user?->email ?? '—'), $where, 'Plik: '.($event->details['file'] ?? '—'), 'Kopia zawiera dokumentację wszystkich pacjentów.'],
+            ),
             SecurityEventType::SettingsChanged => $this->send(
                 'settings:'.$event->id,
                 'Zmieniono ustawienia: '.($event->details['area'] ?? 'panel'),

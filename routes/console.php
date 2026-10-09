@@ -19,3 +19,6 @@ Schedule::call(fn () => Heartbeat::beat(Heartbeat::SCHEDULER))->everyMinute()->n
 Schedule::command('monitoring:ping')->everyFiveMinutes();
 Schedule::command('monitoring:daily-report')->dailyAt('07:00');
 Schedule::command('monitoring:prune')->dailyAt('03:30');
+
+// Database and patient files, encrypted; kept for 14 days on the server.
+Schedule::command('backup:run')->dailyAt('02:30')->withoutOverlapping(120);

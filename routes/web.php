@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AccessLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\MessagingSettingsController;
 use App\Http\Controllers\Admin\SecurityLogController;
 use App\Http\Controllers\Admin\ServiceController;
@@ -104,6 +105,9 @@ Route::middleware('auth')->group(function () {
         Route::post('system/errors/{appError}/resolve', [SystemStatusController::class, 'resolveError'])->name('system.errors.resolve');
         Route::get('security', [SecurityLogController::class, 'index'])->name('security.index');
         Route::get('access-log', [AccessLogController::class, 'index'])->name('access-log.index');
+        Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('backups', [BackupController::class, 'store'])->name('backups.store');
+        Route::get('backups/{name}', [BackupController::class, 'download'])->where('name', '[A-Za-z0-9._-]+')->name('backups.download');
     });
 
     Route::get('patients/{patient}/consents/create', [ConsentController::class, 'create'])->name('consents.create');

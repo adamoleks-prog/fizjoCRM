@@ -6,6 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Enums\SecurityEventType;
 use App\Models\AppError;
 use App\Models\SecurityEvent;
+use App\Services\Backup\BackupRunner;
 use App\Services\Booking\OnlineBooking;
 use App\Services\Booking\Recaptcha;
 use App\Services\Messaging\AppSettings;
@@ -25,6 +26,7 @@ class SystemStatus
         private readonly AppSettings $settings,
         private readonly OutgoingMail $mail,
         private readonly Recaptcha $recaptcha,
+        private readonly BackupRunner $backups,
     ) {}
 
     /**
@@ -35,6 +37,7 @@ class SystemStatus
         return [
             $this->heartbeat(Heartbeat::SCHEDULER, 'Harmonogram zadań (cron schedule:run)', 'Przypomnienia, raport dzienny i porządkowanie logów nie działają. Dodaj wpis cron dla schedule:run.'),
             $this->heartbeat(Heartbeat::QUEUE, 'Kolejka zadań (cron queue:work)', 'Synchronizacja z Google, asystent terapii i alerty e-mail czekają. Sprawdź wpis cron dla queue:work.'),
+            $this->backup(),
             $this->failedJobs(),
             $this->mailConfigured(),
             $this->reminders(),
@@ -87,6 +90,23 @@ class SystemStatus
         }
 
         return $this->error($label, ($last ? 'Ostatni sygnał: '.$last->format('d.m.Y H:i').'. ' : 'Brak sygnału — nigdy nie uruchomiony. ').$whenDead);
+    }
+
+    private function backup(): array
+    {
+        $last = $this->backups->lastSuccess();
+        $error = $this->settings->get('backup.last_error');
+
+        if ($last === null) {
+            return $this->error('Kopia zapasowa', $error ? 'Nieudana: '.$error : 'Jeszcze nie było kopii — wykonuje się codziennie o 2:30.');
+        }
+
+        // Daily at 2:30 — more than a day and a bit means a run was missed.
+        if ($last->lessThan(now()->subHours(26))) {
+            return $this->error('Kopia zapasowa', 'Ostatnia udana: '.$last->format('d.m.Y H:i').'.'.($error ? ' Ostatni błąd: '.$error : ''));
+        }
+
+        return $this->ok('Kopia zapasowa', 'Ostatnia: '.$last->format('d.m.Y H:i').', kopii na serwerze: '.$this->backups->list()->count().'.');
     }
 
     private function failedJobs(): array

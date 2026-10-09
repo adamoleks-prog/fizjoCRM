@@ -17,6 +17,7 @@ use App\Services\SlotService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -213,7 +214,8 @@ class OnlineBooking
         $id = DB::table('booking_verifications')->insertGetId([
             'phone' => $phone,
             'code_hash' => Hash::make($code),
-            'payload' => json_encode([
+            // Encrypted with the application key: there is no patient (and no patient key) yet.
+            'payload' => Crypt::encryptString((string) json_encode([
                 'operator_id' => $physiotherapist->id,
                 'starts_at' => $start->format('Y-m-d H:i:s'),
                 'minutes' => $minutes,
@@ -223,7 +225,7 @@ class OnlineBooking
                 'last_name' => self::properCase($data['last_name']),
                 'email' => $data['email'] ?: null,
                 'reason' => ($data['reason'] ?? null) ?: null,
-            ]),
+            ])),
             'ip_address' => $ip,
             'expires_at' => now()->addMinutes(self::CODE_TTL_MINUTES),
             'created_at' => now(),
@@ -276,7 +278,7 @@ class OnlineBooking
             throw ValidationException::withMessages(['code' => $left > 0 ? "Nieprawidłowy kod. Pozostało prób: {$left}." : 'Nieprawidłowy kod. Wybierz termin jeszcze raz.']);
         }
 
-        $payload = json_decode($verification->payload, true);
+        $payload = json_decode(str_starts_with((string) $verification->payload, '{') ? $verification->payload : Crypt::decryptString($verification->payload), true);
         $physiotherapist = User::findOrFail($payload['operator_id']);
         $start = Carbon::parse($payload['starts_at']);
         $end = $start->copy()->addMinutes($payload['minutes']);

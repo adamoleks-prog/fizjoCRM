@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
+use App\Services\Encryption\PatientKeyring;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[ScopedBy([OperatorScope::class])]
 class AiRecommendation extends Model
 {
+    use EncryptsPatientData;
+
     protected function casts(): array
     {
         return [
@@ -71,5 +75,20 @@ class AiRecommendation extends Model
     public function isFailed(): bool
     {
         return $this->status === 'failed';
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['response', 'decision_note'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return app(PatientKeyring::class)->patientOfCycle($this->therapy_cycle_id);
     }
 }

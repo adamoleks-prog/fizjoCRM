@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\TextExtractionStatus;
 use App\Models\Document;
+use App\Services\Encryption\PatientCipher;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -130,7 +131,9 @@ class DocumentTextExtractor
 
         $target = sys_get_temp_dir().'/doc-'.Str::uuid().'.pdf';
 
-        if (file_put_contents($target, $disk->get($document->disk_path)) === false) {
+        $contents = app(PatientCipher::class)->decryptFile($document->patient_id, (string) $disk->get($document->disk_path));
+
+        if ($contents === null || file_put_contents($target, $contents) === false) {
             return null;
         }
 

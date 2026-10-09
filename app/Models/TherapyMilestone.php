@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\MilestoneHorizon;
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
+use App\Services\Encryption\PatientKeyring;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['goal', 'horizon', 'achieved_at'])]
 class TherapyMilestone extends Model
 {
+    use EncryptsPatientData;
+
     protected function casts(): array
     {
         return [
@@ -44,5 +48,20 @@ class TherapyMilestone extends Model
     public function isAchieved(): bool
     {
         return $this->achieved_at !== null;
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['goal'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return app(PatientKeyring::class)->patientOfCycle($this->therapy_cycle_id);
     }
 }

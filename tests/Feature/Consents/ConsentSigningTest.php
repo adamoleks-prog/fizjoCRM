@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\Patient;
 use App\Models\SignedConsent;
 use App\Models\User;
+use App\Services\Encryption\PatientCipher;
 use Illuminate\Support\Facades\Storage;
 
 function signaturePng(bool $drawn = true): string
@@ -66,7 +67,10 @@ it('stores the signed consent as a PDF document with evidence', function () {
         ->and($consent->witnessed_by_user_id)->toBe($this->operator->id)
         ->and($consent->body_hash)->toBe(hash('sha256', $document->ocr_text));
 
-    expect(substr(Storage::disk('patient_documents')->get($document->disk_path), 0, 5))->toBe('%PDF-');
+    // On disk only encrypted with the patient's key; decrypted it is the PDF.
+    $stored = Storage::disk('patient_documents')->get($document->disk_path);
+    expect($stored)->not->toContain('Anna Nowak')
+        ->and(substr(app(PatientCipher::class)->decryptFile($this->patient->id, $stored), 0, 5))->toBe('%PDF-');
     expect($this->patient->accessLogs()->where('action', 'consent_signed')->count())->toBe(1);
 });
 

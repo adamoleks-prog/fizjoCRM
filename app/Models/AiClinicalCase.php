@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
 use App\Services\Anonymization\HasReviewState;
+use App\Services\Encryption\PatientKeyring;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class AiClinicalCase extends Model
 {
-    use HasReviewState;
+    use EncryptsPatientData, HasReviewState;
 
     protected function casts(): array
     {
@@ -69,5 +71,20 @@ class AiClinicalCase extends Model
     public function textHash(): string
     {
         return hash('sha256', (string) $this->anonymized_text);
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['anonymized_text', 'generated_text', 'redaction_report'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return app(PatientKeyring::class)->patientOfCycle($this->therapy_cycle_id);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DocumentType;
 use App\Enums\TextExtractionStatus;
+use App\Models\Concerns\EncryptsPatientData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class Document extends Model
 {
-    use HasFactory;
+    use EncryptsPatientData, HasFactory;
 
     protected function casts(): array
     {
@@ -71,5 +72,20 @@ class Document extends Model
     public function uploadedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by_user_id');
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['title', 'original_filename', 'ocr_text'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return $this->patient_id;
     }
 }

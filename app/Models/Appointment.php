@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\AppointmentStatus;
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
 use App\Observers\AppointmentObserver;
+use App\Services\Encryption\PatientKeyring;
 use App\Services\Messaging\PhoneNumber;
 use Database\Factories\AppointmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -35,8 +37,41 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Appointment extends Model
 {
+    use EncryptsPatientData;
+
     /** @use HasFactory<AppointmentFactory> */
     use HasFactory, SoftDeletes;
+
+    /** @var list<Model>|null measurements and pain points read with the previous patient's key */
+    private ?array $childrenToReencrypt = null;
+
+    protected static function booted(): void
+    {
+        // A visit moved to another patient's card: its measurements and pain
+        // points follow, so they are read with the old key and written with the new.
+        static::updating(function (Appointment $appointment) {
+            if ($appointment->isDirty('patient_id')) {
+                $appointment->childrenToReencrypt = [
+                    ...$appointment->measurements()->withoutGlobalScopes()->get(),
+                    ...$appointment->painPoints()->withoutGlobalScopes()->get(),
+                ];
+            }
+        });
+
+        static::updated(function (Appointment $appointment) {
+            if ($appointment->childrenToReencrypt === null) {
+                return;
+            }
+
+            app(PatientKeyring::class)->forgetAppointment($appointment->id);
+
+            foreach ($appointment->childrenToReencrypt as $child) {
+                $child->reencryptPatientData();
+            }
+
+            $appointment->childrenToReencrypt = null;
+        });
+    }
 
     protected function casts(): array
     {
@@ -149,5 +184,20 @@ class Appointment extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['icd10_code', 'interview', 'examination', 'detailed_examination', 'conclusions', 'procedures', 'treatment_notes', 'internal_notes', 'patient_recommendations', 'booking_details'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return $this->patient_id;
     }
 }

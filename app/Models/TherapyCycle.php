@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
 use Database\Factories\TherapyCycleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,8 @@ use Illuminate\Support\Collection;
 #[Fillable(['patient_id', 'name', 'therapy_plan'])]
 class TherapyCycle extends Model
 {
+    use EncryptsPatientData;
+
     /** @use HasFactory<TherapyCycleFactory> */
     use HasFactory, SoftDeletes;
 
@@ -91,10 +94,12 @@ class TherapyCycle extends Model
      */
     public function primaryIcd10Code(): ?string
     {
+        // Loaded as a model: the code is encrypted in the database.
         return $this->appointments()
             ->whereNotNull('icd10_code')
             ->reorder('starts_at')
-            ->value('icd10_code');
+            ->first(['id', 'patient_id', 'icd10_code'])
+            ?->icd10_code;
     }
 
     public function primaryIcd10Name(): ?string
@@ -102,5 +107,20 @@ class TherapyCycle extends Model
         $code = $this->primaryIcd10Code();
 
         return $code ? Icd10Code::where('code', $code)->value('name') : null;
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['therapy_plan'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return $this->patient_id;
     }
 }

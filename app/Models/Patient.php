@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
 use App\Services\Messaging\PhoneNumber;
 use App\Support\PersonalData;
@@ -20,12 +21,15 @@ use Illuminate\Support\Collection;
 #[Fillable(['first_name', 'last_name', 'phone', 'email', 'reminders_enabled', 'date_of_birth', 'address', 'notes'])]
 class Patient extends Model
 {
+    use EncryptsPatientData;
+
     /** @use HasFactory<PatientFactory> */
     use HasFactory, SoftDeletes;
 
     protected function casts(): array
     {
         return [
+            'erased_at' => 'datetime',
             'date_of_birth' => 'date',
             'reminders_enabled' => 'boolean',
         ];
@@ -104,5 +108,20 @@ class Patient extends Model
     public function accessLogs(): HasMany
     {
         return $this->hasMany(PatientAccessLog::class);
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['address', 'notes'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return $this->id;
     }
 }

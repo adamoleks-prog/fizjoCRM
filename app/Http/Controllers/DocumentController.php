@@ -9,24 +9,24 @@ use App\Jobs\ExtractDocumentText;
 use App\Models\Document;
 use App\Models\Patient;
 use App\Services\AuditLogService;
+use App\Services\Encryption\PatientCipher;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class DocumentController extends Controller
 {
     private const DISK = 'patient_documents';
 
-    public function store(StoreDocumentRequest $request, Patient $patient): RedirectResponse
+    public function store(StoreDocumentRequest $request, Patient $patient, PatientCipher $cipher): RedirectResponse
     {
         $file = $request->file('file');
 
-        $path = $file->storeAs(
-            "patients/{$patient->id}",
-            Str::uuid().'.pdf',
-            self::DISK,
-        );
+        // Stored encrypted with the patient's key — the PDF never sits on disk in the clear.
+        $path = "patients/{$patient->id}/".Str::uuid().'.pdf';
+        Storage::disk(self::DISK)->put($path, $cipher->encryptFile($patient->id, (string) $file->get()));
 
         $document = $patient->documents()->create([
             'appointment_id' => $request->integer('appointment_id') ?: null,
@@ -44,17 +44,25 @@ class DocumentController extends Controller
         return back()->with('status', 'Dokument został dodany. Odczyt tekstu trwa w tle.');
     }
 
-    public function show(Document $document): StreamedResponse
+    public function show(Document $document, PatientCipher $cipher): Response
     {
         $this->authorize('view', $document);
 
+        $stored = Storage::disk(self::DISK)->get($document->disk_path);
+        $contents = $stored === null ? null : $cipher->decryptFile($document->patient_id, $stored);
+        abort_if($contents === null, 404);
+
         AuditLogService::log($document->patient, PatientAccessAction::DocumentDownloaded);
 
-        return Storage::disk(self::DISK)->response(
-            $document->disk_path,
-            $document->original_filename,
-            ['Content-Type' => 'application/pdf'],
-        );
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                HeaderUtils::DISPOSITION_INLINE,
+                $document->original_filename,
+                Str::ascii($document->original_filename) ?: 'dokument.pdf',
+            ),
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     public function destroy(Document $document): RedirectResponse

@@ -22,6 +22,7 @@ enum SecurityEventType: string
     case BookingCodeFailed = 'booking_code_failed';
     case SettingsChanged = 'settings_changed';
     case BackupDownloaded = 'backup_downloaded';
+    case PatientErased = 'patient_erased';
 
     public function label(): string
     {
@@ -44,6 +45,7 @@ enum SecurityEventType: string
             self::BookingCodeFailed => 'Zapisy: błędny kod SMS',
             self::SettingsChanged => 'Zmiana ustawień',
             self::BackupDownloaded => 'Pobranie kopii zapasowej',
+            self::PatientErased => 'Trwałe usunięcie danych pacjenta',
         };
     }
 
@@ -53,7 +55,7 @@ enum SecurityEventType: string
         return match ($this) {
             self::Login, self::Logout, self::PasswordResetRequested, self::CsrfMismatch,
             self::BookingCodeFailed, self::RecordNotFound => 'info',
-            self::Lockout, self::BookingHoneypot, self::BackupDownloaded => 'critical',
+            self::Lockout, self::BookingHoneypot, self::BackupDownloaded, self::PatientErased => 'critical',
             default => 'warning',
         };
     }

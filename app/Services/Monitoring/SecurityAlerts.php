@@ -46,6 +46,11 @@ class SecurityAlerts
                 'Pobrano kopię zapasową',
                 ['Kto: '.($event->user?->email ?? '—'), $where, 'Plik: '.($event->details['file'] ?? '—'), 'Kopia zawiera dokumentację wszystkich pacjentów.'],
             ),
+            SecurityEventType::PatientErased => $this->send(
+                'patient-erased:'.$event->id,
+                'Trwale usunięto dane pacjenta #'.($event->details['patient_id'] ?? '?'),
+                ['Kto: '.($event->user?->email ?? '—'), $where, 'Klucz szyfrujący pacjenta został zniszczony — tego nie da się cofnąć.'],
+            ),
             SecurityEventType::SettingsChanged => $this->send(
                 'settings:'.$event->id,
                 'Zmieniono ustawienia: '.($event->details['area'] ?? 'panel'),

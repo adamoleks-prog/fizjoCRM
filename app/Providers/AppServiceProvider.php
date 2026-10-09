@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Listeners\RecordAuthenticationEvents;
 use App\Services\Anonymization\NameDictionaries;
+use App\Services\Encryption\PatientCipher;
+use App\Services\Encryption\PatientKeyring;
 use App\Services\GoogleCalendar\CalendarSynchronizer;
 use App\Services\GoogleCalendar\GoogleCalendarService;
 use App\Services\Messaging\AppSettings;
@@ -31,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
         // Read once per request (or queue job), dropped between them.
         $this->app->scoped(AppSettings::class);
         $this->app->scoped(WorkSchedule::class);
+        // Decrypted patient keys live only for one request or queue job.
+        $this->app->scoped(PatientKeyring::class);
+        $this->app->scoped(PatientCipher::class);
 
         // Tens of thousands of entries — built once per process, not per document.
         $this->app->singleton(NameDictionaries::class);

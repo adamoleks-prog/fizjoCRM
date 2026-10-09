@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\MeasurementType;
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
+use App\Services\Encryption\PatientKeyring;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['value_left', 'value_right', 'value_boolean', 'note'])]
 class Measurement extends Model
 {
+    use EncryptsPatientData;
+
     protected function casts(): array
     {
         return [
@@ -81,5 +85,20 @@ class Measurement extends Model
 
         // Trailing zeros of the decimal cast read badly for whole numbers (90.00°).
         return rtrim(rtrim($value, '0'), '.') ?: '0';
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['note'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return app(PatientKeyring::class)->patientOfAppointment($this->appointment_id);
     }
 }

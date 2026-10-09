@@ -185,4 +185,32 @@
             </div>
         </div>
     </div>
+    @if (auth()->user()->isAdmin())
+        <div class="pb-10">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <details class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-900 dark:text-gray-100 border border-red-200 dark:border-red-900" @if ($errors->has('confirmation') || $errors->has('reason_ok')) open @endif>
+                    <summary class="cursor-pointer font-semibold text-red-700 dark:text-red-400">Trwałe usunięcie danych pacjenta (RODO)</summary>
+                    <div class="mt-3 text-sm space-y-2 text-gray-700 dark:text-gray-300">
+                        <p>Niszczy klucz szyfrujący pacjenta: cała dokumentacja (wywiady, badania, rozpoznania, notatki, pomiary, plany terapii, odczytany tekst dokumentów, podpowiedzi asystenta) staje się nieodczytywalna. Pliki PDF zostają usunięte, imię, nazwisko i kontakt nadpisane, wizyty usunięte z Kalendarza Google.</p>
+                        <p>W kopiach zapasowych dane stają się nieodczytywalne po wygaśnięciu kopii kluczy (3 dni); imię i nazwisko mogą w nich pozostać do 14 dni.</p>
+                        <p class="font-semibold">Dokumentację medyczną trzeba przechowywać 20 lat od ostatniego wpisu. Usuwaj wcześniej tylko wtedy, gdy masz do tego podstawę prawną. Tego nie da się cofnąć.</p>
+                    </div>
+                    <form method="POST" action="{{ route('admin.patients.erase', $patient) }}" class="mt-4 space-y-3">
+                        @csrf
+                        <label class="flex items-start gap-2 text-sm">
+                            <input type="checkbox" name="reason_ok" value="1" class="mt-0.5 rounded border-gray-300 text-red-600">
+                            <span>Okres przechowywania dokumentacji minął albo usunięcie jest uzasadnione.</span>
+                        </label>
+                        <x-input-error :messages="$errors->get('reason_ok')" />
+                        <div class="max-w-xs">
+                            <x-input-label for="confirmation" value="Wpisz USUŃ, żeby potwierdzić" />
+                            <x-text-input id="confirmation" name="confirmation" class="mt-1 block w-full" autocomplete="off" />
+                            <x-input-error :messages="$errors->get('confirmation')" class="mt-2" />
+                        </div>
+                        <x-danger-button>Usuń trwale</x-danger-button>
+                    </form>
+                </details>
+            </div>
+        </div>
+    @endif
 </x-app-layout>

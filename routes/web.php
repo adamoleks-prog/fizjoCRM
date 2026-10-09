@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccessLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\MessagingSettingsController;
+use App\Http\Controllers\Admin\PatientErasureController;
 use App\Http\Controllers\Admin\SecurityLogController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SystemStatusController;
@@ -105,6 +106,7 @@ Route::middleware('auth')->group(function () {
         Route::post('system/errors/{appError}/resolve', [SystemStatusController::class, 'resolveError'])->name('system.errors.resolve');
         Route::get('security', [SecurityLogController::class, 'index'])->name('security.index');
         Route::get('access-log', [AccessLogController::class, 'index'])->name('access-log.index');
+        Route::post('patients/{patient}/erase', [PatientErasureController::class, 'store'])->name('patients.erase');
         Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('backups', [BackupController::class, 'store'])->name('backups.store');
         Route::get('backups/{name}', [BackupController::class, 'download'])->where('name', '[A-Za-z0-9._-]+')->name('backups.download');

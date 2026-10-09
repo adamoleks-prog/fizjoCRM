@@ -20,6 +20,8 @@ class BackupController extends Controller
     {
         return view('admin.backups', [
             'backups' => $this->backups->list(),
+            'keyFiles' => $this->backups->list(keys: true),
+            'keysKeepDays' => config('backup.keys_keep_days'),
             'lastSuccess' => $this->backups->lastSuccess(),
             'lastError' => $settings->get('backup.last_error'),
             'keepDays' => config('backup.keep_days'),

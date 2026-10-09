@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
 use App\Services\Anonymization\HasReviewState;
+use App\Services\Encryption\PatientKeyring;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -30,7 +32,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class DocumentAnonymization extends Model
 {
-    use HasReviewState;
+    use EncryptsPatientData, HasReviewState;
 
     protected function casts(): array
     {
@@ -54,5 +56,20 @@ class DocumentAnonymization extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by_user_id');
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['anonymized_text', 'generated_text', 'redaction_report'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return app(PatientKeyring::class)->patientOfDocument($this->document_id);
     }
 }

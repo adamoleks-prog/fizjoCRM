@@ -10,6 +10,7 @@ use App\Models\Patient;
 use App\Models\SignedConsent;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\Encryption\PatientCipher;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +48,7 @@ class ConsentSigner
         ])->setPaper('a4')->setOption('isFontSubsettingEnabled', true)->output();
 
         $path = "patients/{$patient->id}/".Str::uuid().'.pdf';
-        Storage::disk(self::DISK)->put($path, $pdf);
+        Storage::disk(self::DISK)->put($path, app(PatientCipher::class)->encryptFile($patient->id, $pdf));
 
         return DB::transaction(function () use ($patient, $template, $witness, $request, $text, $signedAt, $path, $pdf) {
             $document = $patient->documents()->create([

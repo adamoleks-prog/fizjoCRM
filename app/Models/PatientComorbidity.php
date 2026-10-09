@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ComorbidityKind;
+use App\Models\Concerns\EncryptsPatientData;
 use App\Models\Scopes\OperatorScope;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['name', 'kind'])]
 class PatientComorbidity extends Model
 {
+    use EncryptsPatientData;
+
     protected function casts(): array
     {
         return [
@@ -34,5 +37,20 @@ class PatientComorbidity extends Model
     public function operator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'operator_id');
+    }
+
+    /**
+     * Encrypted with the patient's own key (see EncryptsPatientData).
+     *
+     * @return list<string>
+     */
+    public function patientEncrypted(): array
+    {
+        return ['name'];
+    }
+
+    public function encryptionPatientId(): ?int
+    {
+        return $this->patient_id;
     }
 }

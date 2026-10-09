@@ -7,6 +7,10 @@ return [
 
     'keep_days' => (int) env('BACKUP_KEEP_DAYS', 14),
 
+    // Patients' data keys, in a separate file. Short on purpose: an erased
+    // patient's key is gone from all backups this many days after erasure.
+    'keys_keep_days' => (int) env('BACKUP_KEYS_KEEP_DAYS', 3),
+
     // Patient documents and signed consents (patient_documents disk) and the
     // application's private files. Paths relative to storage/app.
     'directories' => ['patient-documents', 'private'],

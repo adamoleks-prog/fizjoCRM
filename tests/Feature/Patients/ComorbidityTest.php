@@ -97,7 +97,8 @@ it('removes entries that are no longer submitted', function () {
             ],
         ]));
 
-    $kept = PatientComorbidity::where('name', 'Astma')->sole();
+    // The name is encrypted in the database — matched after loading.
+    $kept = PatientComorbidity::all()->firstWhere('name', 'Astma');
 
     $this->actingAs($this->operator)
         ->put(route('appointments.update', $this->appointment), ($this->payload)([
